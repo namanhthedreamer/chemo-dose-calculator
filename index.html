@@ -179,7 +179,7 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
 
         <table class="sch-table" style="margin-bottom:0.5rem">
           <thead><tr id="prev-table-header">
-            <th>Thuốc</th><th>Liều cơ sở</th><th>Loại liều</th><th>Dung môi</th><th>T.tích pha</th><th>T/gian truyền</th><th>Ngày dùng (D)</th><th>Cách dùng</th><th>Liều trần (Max)</th><th class="tmpl-edit-col hidden">Thao tác</th>
+            <th>Thuốc</th><th>Liều cơ sở</th><th>Loại liều</th><th>Đường dùng</th><th>mg/viên</th><th>Dung môi</th><th>T.tích pha</th><th>T/gian truyền</th><th>Ngày dùng (D)</th><th>Cách dùng</th><th>Liều trần (Max)</th><th class="tmpl-edit-col hidden">Thao tác</th>
           </tr></thead>
           <tbody id="prev-table"></tbody>
         </table>
@@ -261,15 +261,7 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
       </div>
       <div class="field">
         <label>Liều dùng thực tế (% so với chuẩn)</label>
-        <select id="dose-reduction-pct">
-          <option value="100">100% — Liều chuẩn đầy đủ</option>
-          <option value="90">90% — Giảm 10%</option>
-          <option value="80">80% — Giảm 20%</option>
-          <option value="75">75% — Giảm 25%</option>
-          <option value="66">66% — Giảm 33%</option>
-          <option value="50">50% — Giảm 50%</option>
-          <option value="custom">Tùy chỉnh...</option>
-        </select>
+        <input id="dose-reduction-pct" type="number" min="0" max="100" step="0.1" value="100" placeholder="Vd: 95" oninput="recalc()">
       </div>
     </div>
     
@@ -411,6 +403,10 @@ function initDataStorage() {
   } else {
     REGIMENS = JSON.parse(stored);
   }
+  REGIMENS = REGIMENS.map(r => ({
+    ...r,
+    drugs: (r.drugs || []).map(d => normalizeDrug(d))
+  }));
   CATS = [...new Set(REGIMENS.map(r => r.cat))];
 }
 
@@ -484,6 +480,81 @@ function parseDays(str) {
   return [...new Set(days)].sort((a, b) => a - b);
 }
 
+function inferRoute(d) {
+  const text = `${d.route || ''} ${d.diluent || ''} ${d.instruction || ''} ${d.unit || ''}`.toLowerCase();
+  if (text.includes('oral') || text.includes('uống') || text.includes('uongs')) return 'oral';
+  if (text.includes('tiêm dưới da') || text.includes('subcutaneous') || text.includes('sc')) return 'sc';
+  if (text.includes('tiêm bắp') || text.includes('intramuscular') || text.includes('im')) return 'im';
+  return 'iv';
+}
+
+function routeLabel(route) {
+  const labels = {
+    iv: 'Truyền/Tiêm TM',
+    oral: 'Uống',
+    sc: 'Tiêm dưới da',
+    im: 'Tiêm bắp'
+  };
+  return labels[route] || labels.iv;
+}
+
+function cleanDoseUnit(unit, doseType) {
+  if (doseType === 'auc') return 'AUC';
+  if (doseType === 'flat') return 'mg';
+  const text = (unit || 'mg/m²').toString();
+  if (text.includes('mg/m²')) return 'mg/m²';
+  return text.replace(/\s*[×x]\s*\d+.*$/i, '').replace(/\(uongs?\)/i, '').trim() || 'mg/m²';
+}
+
+function inferOralFrequency(d) {
+  const text = `${d.unit || ''} ${d.instruction || ''}`.toLowerCase();
+  const explicit = text.match(/(\d+(?:[.,]\d+)?)\s*lần/);
+  if (explicit) return parseFloat(explicit[1].replace(',', '.')) || 0;
+  if (text.includes('hai lần') || text.includes('sáng và tối')) return 2;
+  if (text.includes('một lần') || text.includes('1 lần')) return 1;
+  return 0;
+}
+
+function oralTabletTotal(d) {
+  return (parseFloat(d.oralTabsMorning)||0) +
+    (parseFloat(d.oralTabsNoon)||0) +
+    (parseFloat(d.oralTabsEvening)||0);
+}
+
+function oralTabletScheduleText(d) {
+  const parts = [];
+  const morning = parseFloat(d.oralTabsMorning)||0;
+  const noon = parseFloat(d.oralTabsNoon)||0;
+  const evening = parseFloat(d.oralTabsEvening)||0;
+  if(morning>0) parts.push(`Sáng ${morning} viên`);
+  if(noon>0) parts.push(`Trưa ${noon} viên`);
+  if(evening>0) parts.push(`Tối ${evening} viên`);
+  return parts.join(', ');
+}
+
+function normalizeDrug(d) {
+  const route = inferRoute(d || {});
+  const doseType = d.doseType || 'bsa';
+  const oralFrequency = route === 'oral' ? (parseFloat(d.volume) || inferOralFrequency(d || {})) : (parseFloat(d.volume) || 0);
+  const legacyTabs = parseFloat(d.oralTablets)||0;
+  return {
+    ...d,
+    route,
+    doseType,
+    unit: cleanDoseUnit(d.unit, doseType),
+    oralStrength: parseFloat(d.oralStrength) || 0,
+    oralTabsMorning: parseFloat(d.oralTabsMorning) || 0,
+    oralTabsNoon: parseFloat(d.oralTabsNoon) || 0,
+    oralTabsEvening: parseFloat(d.oralTabsEvening) || legacyTabs || 0,
+    diluent: route === 'oral' ? 'Không áp dụng' : (d.diluent || 'NaCl 0.9%'),
+    volume: oralFrequency,
+    infTime: route === 'oral' ? 0 : (parseFloat(d.infTime) || 0),
+    days: Array.isArray(d.days) ? d.days : parseDays(d.days),
+    maxDose: parseFloat(d.maxDose) || 0,
+    instruction: d.instruction || ''
+  };
+}
+
 function showTab(t){
   ['templates','calc','schedule','history'].forEach(x=>{
     document.getElementById('tab-'+x).classList.toggle('hidden',x!==t);
@@ -543,13 +614,16 @@ function selectRegimen(id){
 
   const tbody=document.getElementById('prev-table');
   if (selectedRegimen.drugs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--color-text-secondary); padding:20px;">Phác đồ trống. Nhấn "Chỉnh sửa cấu trúc mẫu" để bổ sung thuốc.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:var(--color-text-secondary); padding:20px;">Phác đồ trống. Nhấn "Chỉnh sửa cấu trúc mẫu" để bổ sung thuốc.</td></tr>';
   } else {
     tbody.innerHTML=selectedRegimen.drugs.map(d=>{
+      d = normalizeDrug(d);
       return `<tr>
         <td><strong>${d.name}</strong></td>
         <td>${d.dose} ${d.unit}</td>
         <td><span class="badge b-${d.doseType}">${d.doseType==='bsa'?'BSA':d.doseType==='auc'?'AUC':'Flat'}</span></td>
+        <td><span class="cycle-badge">${routeLabel(d.route)}</span></td>
+        <td>${d.route==='oral' && d.oralStrength>0?d.oralStrength+' mg':'—'}</td>
         <td>${d.diluent}</td>
         <td>${d.volume>0?d.volume+' mL':'—'}</td>
         <td>${d.infTime>60?(d.infTime/60).toFixed(1)+'h':d.infTime>0?d.infTime+'ph':'—'}</td>
@@ -592,6 +666,7 @@ function renderTemplateEditor() {
   
   const tbody = document.getElementById('prev-table');
   let html = selectedRegimen.drugs.map((d, idx) => {
+    d = normalizeDrug(d);
     return `
       <tr data-idx="${idx}">
         <td><input type="text" class="tmpl-d-name" value="${d.name}" style="width:100%; padding:4px; font-weight:bold;"></td>
@@ -604,7 +679,17 @@ function renderTemplateEditor() {
           </select>
         </td>
         <td>
+          <select class="tmpl-d-route" style="padding:4px; width:100%;">
+            <option value="iv" ${d.route==='iv'?'selected':''}>Truyền/Tiêm TM</option>
+            <option value="oral" ${d.route==='oral'?'selected':''}>Uống</option>
+            <option value="sc" ${d.route==='sc'?'selected':''}>Tiêm dưới da</option>
+            <option value="im" ${d.route==='im'?'selected':''}>Tiêm bắp</option>
+          </select>
+        </td>
+        <td><input type="number" step="0.1" class="tmpl-d-strength" value="${d.oralStrength || ''}" style="width:55px; padding:4px;" placeholder="500"></td>
+        <td>
           <select class="tmpl-d-diluent" style="padding:4px; width:100%;">
+            <option ${d.diluent==='Không áp dụng'?'selected':''}>Không áp dụng</option>
             <option ${d.diluent==='NaCl 0.9%'?'selected':''}>NaCl 0.9%</option>
             <option ${d.diluent==='Glucose 5%'?'selected':''}>Glucose 5%</option>
             <option ${d.diluent==='Nước cất'?'selected':''}>Nước cất</option>
@@ -624,7 +709,7 @@ function renderTemplateEditor() {
   
   html += `
     <tr class="no-print">
-      <td colspan="10" style="padding:12px 0; background:none;">
+      <td colspan="12" style="padding:12px 0; background:none;">
         <button class="btn-sec" onclick="addTmplDrug()"><i class="ti ti-plus"></i> Thêm hoạt chất mới vào mẫu</button>
         <button class="btn-primary" style="float:right;" onclick="saveTemplateChanges()"><i class="ti ti-device-floppy"></i> Lưu toàn bộ cấu trúc phác đồ</button>
       </td>
@@ -640,7 +725,7 @@ function removeTmplDrug(idx) {
 
 function addTmplDrug() {
   selectedRegimen.drugs.push({
-    name: 'Thuốc mới', doseType: 'bsa', dose: 0, unit: 'mg/m²', diluent: 'NaCl 0.9%', volume: 250, infTime: 60, days: [1], maxDose: 0, instruction: ''
+    name: 'Thuốc mới', route: 'iv', doseType: 'bsa', dose: 0, unit: 'mg/m²', oralStrength: 0, diluent: 'NaCl 0.9%', volume: 250, infTime: 60, days: [1], maxDose: 0, instruction: ''
   });
   renderTemplateEditor();
 }
@@ -659,9 +744,11 @@ function saveTemplateChanges() {
     const dName = row.querySelector('.tmpl-d-name').value.trim();
     const dDose = parseFloat(row.querySelector('.tmpl-d-dose').value) || 0;
     const dType = row.querySelector('.tmpl-d-type').value;
-    const dDiluent = row.querySelector('.tmpl-d-diluent').value;
-    const dVol = parseFloat(row.querySelector('.tmpl-d-vol').value) || 0;
-    const dTime = parseFloat(row.querySelector('.tmpl-d-time').value) || 0;
+    const dRoute = row.querySelector('.tmpl-d-route').value;
+    const dStrength = parseFloat(row.querySelector('.tmpl-d-strength').value) || 0;
+    let dDiluent = row.querySelector('.tmpl-d-diluent').value;
+    let dVol = parseFloat(row.querySelector('.tmpl-d-vol').value) || 0;
+    let dTime = parseFloat(row.querySelector('.tmpl-d-time').value) || 0;
     const dDaysStr = row.querySelector('.tmpl-d-days').value;
     const dIns = row.querySelector('.tmpl-d-ins').value.trim();
     const dMax = parseFloat(row.querySelector('.tmpl-d-max').value) || 0;
@@ -669,10 +756,15 @@ function saveTemplateChanges() {
     let unit = 'mg/m²';
     if (dType === 'auc') unit = 'AUC';
     if (dType === 'flat') unit = 'mg';
+    if (dRoute === 'oral') {
+      dDiluent = 'Không áp dụng';
+      if (dVol > 10) dVol = 0;
+      dTime = 0;
+    }
     
-    updatedDrugs.push({
-      name: dName, doseType: dType, dose: dDose, unit: unit, diluent: dDiluent, volume: dVol, infTime: dTime, days: parseDays(dDaysStr), maxDose: dMax, instruction: dIns
-    });
+    updatedDrugs.push(normalizeDrug({
+      name: dName, route: dRoute, doseType: dType, dose: dDose, unit: unit, oralStrength: dStrength, diluent: dDiluent, volume: dVol, infTime: dTime, days: parseDays(dDaysStr), maxDose: dMax, instruction: dIns
+    }));
   });
   
   selectedRegimen.name = name;
@@ -745,7 +837,7 @@ function loadRegimen(){
     sel.appendChild(opt);
   }
   sel.value=selectedRegimen.cycle;
-  drugs=selectedRegimen.drugs.map((d,i)=>({...d,id:'drug-'+(++drugCounter)}));
+  drugs=selectedRegimen.drugs.map((d,i)=>({...normalizeDrug(d),id:'drug-'+(++drugCounter)}));
   renderDrugs();
   recalc();
   updateNextDate();
@@ -806,13 +898,43 @@ function calcDrug(id){
   
   let finalDose = theoretical;
   let pctString = '';
+
+  const dosePct =
+    parseFloat(
+      document.getElementById(
+        'dose-reduction-pct'
+      ).value
+    ) || 100;
+
+  finalDose =
+    finalDose *
+    (dosePct/100);
   
-  if(d.maxDose > 0 && theoretical > d.maxDose) {
+  if(d.maxDose > 0 && finalDose > d.maxDose) {
     finalDose = d.maxDose; 
     let pct = (d.maxDose / theoretical * 100).toFixed(1);
     pctString = `<span style="font-size:11px; font-weight:500; color:#A32D2D; display:block; margin-top:2px;">(Áp liều trần bảo vệ: đạt ${pct}% liều lý thuyết gốc ${theoretical.toFixed(1)} mg)</span>`;
-  } else if(d.maxDose > 0 && theoretical <= d.maxDose && theoretical > 0) {
+  } else if(d.maxDose > 0 && finalDose <= d.maxDose && theoretical > 0) {
     pctString = `<span style="font-size:11px; font-weight:normal; color:#27500A; display:block; margin-top:2px;">(Dưới ngưỡng giới hạn trần: ${d.maxDose} mg)</span>`;
+  }
+
+  if(d.route==='oral' && d.oralStrength > 0 && finalDose > 0) {
+    const targetDose = finalDose;
+    let tablets = oralTabletTotal(d);
+    const min95Tablets = Math.ceil((theoretical * 0.95) / d.oralStrength);
+    if(tablets <= 0) {
+      tablets = Math.round(targetDose / d.oralStrength);
+      if(tablets < min95Tablets) tablets = min95Tablets;
+    }
+    if(tablets < 1) tablets = 1;
+    if(d.maxDose > 0 && tablets * d.oralStrength > d.maxDose) {
+      tablets = Math.floor(d.maxDose / d.oralStrength);
+      if(tablets < 1) tablets = 1;
+    }
+    finalDose = tablets * d.oralStrength;
+    const tabletPct = theoretical > 0 ? (finalDose / theoretical * 100).toFixed(1) : '—';
+    const scheduleText = oralTabletScheduleText(d);
+    pctString += `<span style="font-size:11px; font-weight:500; color:#0C447C; display:block; margin-top:2px;">(${tablets} viên/ngày × ${d.oralStrength} mg/viên; đạt ${tabletPct}% liều lý thuyết${scheduleText ? '; '+scheduleText : '; gợi ý tối thiểu '+min95Tablets+' viên/ngày để đạt ≥95%'})</span>`;
   }
   
   const re=document.getElementById('result-'+id);
@@ -825,12 +947,15 @@ function calcDrug(id){
   }
   
   const ce=document.getElementById('conc-'+id);
-  if(ce&&d.volume>0&&finalDose>0) ce.textContent=(finalDose/d.volume).toFixed(2)+' mg/mL';
+  if(ce) {
+    if(d.route==='oral') ce.textContent='Uống';
+    else if(d.volume>0&&finalDose>0) ce.textContent=(finalDose/d.volume).toFixed(2)+' mg/mL';
+  }
 }
 
 function addDrug(){
   drugCounter++;
-  drugs.push({id:'drug-'+drugCounter,name:'',doseType:'bsa',dose:0,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:''});
+  drugs.push({id:'drug-'+drugCounter,name:'',route:'iv',doseType:'bsa',dose:0,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:''});
   renderDrugs();recalc();
 }
 
@@ -839,15 +964,27 @@ function removeDrug(id){drugs=drugs.filter(d=>d.id!==id);renderDrugs();}
 function setDoseType(id,type){
   const d=drugs.find(x=>x.id===id);if(!d)return;
   d.doseType=type;
-  d.unit=type==='bsa'?'mg/m²':type==='auc'?'AUC':'mg';
+  d.unit=cleanDoseUnit(type==='bsa'?'mg/m²':type==='auc'?'AUC':'mg', type);
   renderDrugs();recalc();
 }
 
 function updateDrug(id,field,val){
   const d=drugs.find(x=>x.id===id);if(!d)return;
   if(field==='days') d.days=parseDays(val);
-  else if(['dose','volume','infTime','maxDose'].includes(field)) d[field]=parseFloat(val)||0;
+  else if(['dose','volume','infTime','maxDose','oralStrength'].includes(field)) d[field]=parseFloat(val)||0;
   else d[field]=val;
+  if(field==='route') {
+    if(val==='oral') {
+      d.diluent='Không áp dụng';
+      d.volume=0;
+      d.infTime=0;
+    } else if(d.diluent==='Không áp dụng' || d.diluent==='Uống (oral)') {
+      d.diluent='NaCl 0.9%';
+      d.volume=250;
+      d.infTime=60;
+    }
+    Object.assign(d, normalizeDrug(d));
+  }
   calcDrug(id);
 }
 
@@ -855,8 +992,11 @@ function renderDrugs(){
   const list=document.getElementById('drug-list');
   list.innerHTML='';
   drugs.forEach((d, index)=>{
+    d = normalizeDrug(d);
+    drugs[index] = {...d, id: drugs[index].id};
     const bmap={'bsa':'BSA','auc':'AUC (Calvert)','flat':'Flat dose'};
     const bcls={'bsa':'b-bsa','auc':'b-auc','flat':'b-flat'};
+    const isOral = d.route === 'oral';
     const div=document.createElement('div');
     div.className='drug-block';div.id=d.id;
     div.innerHTML=`
@@ -868,7 +1008,17 @@ function renderDrugs(){
         <input style="flex:1;min-width:130px;height:32px;padding:0 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:14px;font-weight:600"
           placeholder="Tên hoạt chất" value="${d.name}" oninput="updateDrug('${d.id}','name',this.value)">
         <span class="badge ${bcls[d.doseType]}">${bmap[d.doseType]}</span>
+        <span class="cycle-badge">${routeLabel(d.route)}</span>
         <button class="btn-danger no-print" onclick="removeDrug('${d.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">Đường dùng</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="dtb ${d.route==='iv'?'active':''}" onclick="updateDrug('${d.id}','route','iv');renderDrugs();recalc()">Truyền/Tiêm TM</button>
+          <button class="dtb ${d.route==='oral'?'active':''}" onclick="updateDrug('${d.id}','route','oral');renderDrugs();recalc()">Uống</button>
+          <button class="dtb ${d.route==='sc'?'active':''}" onclick="updateDrug('${d.id}','route','sc');renderDrugs();recalc()">Tiêm dưới da</button>
+          <button class="dtb ${d.route==='im'?'active':''}" onclick="updateDrug('${d.id}','route','im');renderDrugs();recalc()">Tiêm bắp</button>
+        </div>
       </div>
       <div style="margin-bottom:10px">
         <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">Loại hình tính liều cơ sở</div>
@@ -879,7 +1029,7 @@ function renderDrugs(){
         </div>
       </div>
       <div class="grid3" style="margin-bottom:10px">
-        <div class="field"><label>${d.doseType==='auc'?'Target AUC':'Mức liều cơ sở ('+d.unit+')'}</label>
+        <div class="field"><label>${d.doseType==='auc'?'Target AUC':'Mức liều cơ sở ('+cleanDoseUnit(d.unit,d.doseType)+')'}</label>
           <input type="number" step="0.1" value="${d.dose||''}" placeholder="0" oninput="updateDrug('${d.id}','dose',this.value);recalc()"></div>
         <div class="field"><label>Liều trần tối đa bảo vệ (mg)</label>
           <input type="number" step="1" value="${d.maxDose||''}" placeholder="0" oninput="updateDrug('${d.id}','maxDose',this.value);recalc()"></div>
@@ -887,18 +1037,19 @@ function renderDrugs(){
           <input type="text" value="${formatDays(d.days)}" oninput="updateDrug('${d.id}','days',this.value)"></div>
       </div>
       <div class="grid3" style="margin-bottom:10px">
-        <div class="field"><label>Dung môi hòa tan</label>
+        <div class="field"><label>${isOral?'Dung môi / Pha thuốc':'Dung môi hòa tan'}</label>
           <select onchange="updateDrug('${d.id}','diluent',this.value)">
+            <option ${d.diluent==='Không áp dụng'?'selected':''}>Không áp dụng</option>
             <option ${d.diluent==='NaCl 0.9%'?'selected':''}>NaCl 0.9%</option>
             <option ${d.diluent==='Glucose 5%'?'selected':''}>Glucose 5%</option>
             <option ${d.diluent==='Nước cất'?'selected':''}>Nước cất</option>
             <option ${d.diluent==='Uống (oral)'?'selected':''}>Uống (oral)</option>
             <option ${d.diluent==='Không pha loãng'?'selected':''}>Không pha loãng</option>
           </select></div>
-        <div class="field"><label>Thể tích dung môi (mL)</label>
+        <div class="field"><label>${isOral?'Số lần uống/ngày':'Thể tích dung môi (mL)'}</label>
           <input type="number" value="${d.volume}" oninput="updateDrug('${d.id}','volume',this.value);recalc()"></div>
-        <div class="field"><label>Thời gian truyền (phút)</label>
-          <input type="number" value="${d.infTime}" oninput="updateDrug('${d.id}','infTime',this.value)"></div>
+        <div class="field"><label>${isOral?'Hàm lượng viên (mg/viên)':'Thời gian truyền (phút)'}</label>
+          <input type="number" step="0.1" value="${isOral?(d.oralStrength||''):d.infTime}" oninput="updateDrug('${d.id}','${isOral?'oralStrength':'infTime'}',this.value);recalc()"></div>
       </div>
       <div class="field" style="margin-bottom:10px;">
         <label>Cách dùng / Đường dùng & Hướng dẫn y lệnh lâm sàng</label>
@@ -906,8 +1057,8 @@ function renderDrugs(){
       </div>
       <div class="drug-result">
         <div class="rc"><div class="rl">Tổng liều y lệnh thực tế</div><div class="rv" id="result-${d.id}">—</div></div>
-        <div class="rc"><div class="rl">Nồng độ sau pha</div><div class="rv" id="conc-${d.id}">—</div></div>
-        <div class="rc"><div class="rl">Tốc độ truyền dịch</div><div class="rv">${d.volume>0&&d.infTime>0?(d.volume/d.infTime*60).toFixed(0)+' mL/h':'—'}</div></div>
+        <div class="rc"><div class="rl">${isOral?'Đường dùng':'Nồng độ sau pha'}</div><div class="rv" id="conc-${d.id}">${isOral?'Uống':'—'}</div></div>
+        <div class="rc"><div class="rl">${isOral?'Số lần/ngày':'Tốc độ truyền dịch'}</div><div class="rv">${isOral?(d.volume>0?d.volume+' lần/ngày':'—'):(d.volume>0&&d.infTime>0?(d.volume/d.infTime*60).toFixed(0)+' mL/h':'—')}</div></div>
       </div>`;
     list.appendChild(div);
   });
@@ -947,13 +1098,22 @@ function generateSchedule(){
   for (let d = 1; d <= maxDay; d++) {
     let dayDrugs = [];
     drugs.forEach(drug => {
+      drug = normalizeDrug(drug);
       if (drug.days.includes(d)) {
         let totalDoseText = document.getElementById('result-' + drug.id)?.innerText || '—';
         let cleanDose = totalDoseText.split('\n')[0].trim(); 
-        const rate = drug.volume > 0 && drug.infTime > 0 ? (drug.volume / drug.infTime * 60).toFixed(0) + ' mL/h' : '—';
+        const isOral = drug.route === 'oral';
+        if(isOral && drug.oralStrength > 0) {
+          const doseVal = parseFloat(cleanDose) || 0;
+          const tablets = doseVal > 0 ? (doseVal / drug.oralStrength) : 0;
+          if(tablets > 0) cleanDose += ` (${Number(tablets.toFixed(2))} viên × ${drug.oralStrength} mg)`;
+        }
+        const rate = !isOral && drug.volume > 0 && drug.infTime > 0 ? (drug.volume / drug.infTime * 60).toFixed(0) + ' mL/h' : '—';
+        const volumeText = isOral ? '—' : (drug.volume > 0 ? drug.volume + ' mL' : '—');
+        const timeText = isOral ? '—' : (drug.infTime >= 60 ? (drug.infTime / 60).toFixed(1) + 'h' : drug.infTime > 0 ? drug.infTime + ' ph' : '—');
         
         dayDrugs.push({
-          name: drug.name, totalDose: cleanDose, diluent: drug.diluent, volume: drug.volume, rate: rate, infTime: drug.infTime, instruction: drug.instruction || '—'
+          name: drug.name, route: drug.route, routeText: routeLabel(drug.route), totalDose: cleanDose, diluent: drug.diluent, volume: drug.volume, volumeText: volumeText, rate: rate, infTime: drug.infTime, timeText: timeText, instruction: drug.instruction || '—'
         });
       }
     });
@@ -968,6 +1128,7 @@ function generateSchedule(){
     if (p1.length !== p2.length) return false;
     for (let i = 0; i < p1.length; i++) {
       if (p1[i].name !== p2[i].name || p1[i].totalDose !== p2[i].totalDose || 
+          p1[i].route !== p2[i].route ||
           p1[i].diluent !== p2[i].diluent || p1[i].volume !== p2[i].volume || 
           p1[i].rate !== p2[i].rate || p1[i].infTime !== p2[i].infTime ||
           p1[i].instruction !== p2[i].instruction) {
@@ -1030,7 +1191,7 @@ function generateSchedule(){
         <th style="width:65px; text-align:center;">Ngày dùng</th>
         <th style="width:160px;">Tên thuốc / Hoạt chất hóa chất</th>
         <th style="width:115px;">Liều lượng y lệnh</th>
-        <th style="width:100px;">Dung môi pha</th>
+        <th style="width:100px;">Đường dùng / Dung môi</th>
         <th style="width:65px; text-align:center;">Thể tích</th>
         <th>Cách dùng & Hướng dẫn y lệnh</th>
         <th style="width:80px; text-align:center;">Tốc độ</th>
@@ -1048,11 +1209,11 @@ function generateSchedule(){
         ${i === 0 ? `<td rowspan="${g.profile.length}" style="text-align:center; vertical-align:middle; font-weight:bold; background:#f9fafb;"><span class="tag-day">${dayText}</span></td>` : ''}
         <td style="font-weight:600; padding:8px;">${d.name || '(Chưa nhập tên thuốc)'}</td>
         <td style="font-weight:bold; color:#0C447C; padding:8px; font-size:13px;">${d.totalDose}</td>
-        <td>${d.diluent}</td>
-        <td style="text-align:center;">${d.volume > 0 ? d.volume + ' mL' : '—'}</td>
+        <td>${d.routeText}${d.route==='oral'?'':' · '+d.diluent}</td>
+        <td style="text-align:center;">${d.volumeText}</td>
         <td style="font-size:12px; font-style:italic; padding:6px; color:#111;">${d.instruction}</td>
         <td style="text-align:center; font-family:var(--font-sans); font-weight:bold;">${d.rate}</td>
-        <td style="text-align:center;">${d.infTime >= 60 ? (d.infTime / 60).toFixed(1) + 'h' : d.infTime > 0 ? d.infTime + ' ph' : '—'}</td>
+        <td style="text-align:center;">${d.timeText}</td>
         <td class="print-element" style="border:1px solid #000;"></td>
       </tr>`;
     });
@@ -1141,18 +1302,29 @@ function saveRecord(){
   const currentCycleNo = parseInt(document.getElementById('current-cycle-no').value)||1;
   const plannedCycles = parseInt(document.getElementById('planned-cycles').value)||0;
   const doseReductionEl = document.getElementById('dose-reduction-pct');
-  const doseReductionPct = doseReductionEl.value === 'custom' ? 100 : (parseFloat(doseReductionEl.value)||100);
+  const doseReductionPct = parseFloat(doseReductionEl.value)||100;
 
   // Snapshot drug doses — deep copy to avoid reference issues
   const drugSnapshot = drugs.map(d => {
     const resultEl = document.getElementById('result-' + d.id);
     const doseText = resultEl ? resultEl.innerText.split('\n')[0].trim() : '—';
     const doseVal = parseFloat(doseText) || 0;
+    const bsaVal = parseFloat(bsa)||0;
+    const egfrVal = parseFloat(egfr)||0;
+    let theoreticalDose = 0;
+    if(d.doseType==='bsa'&&bsaVal>0) theoreticalDose=d.dose*bsaVal;
+    else if(d.doseType==='auc'&&egfrVal>0) theoreticalDose=d.dose*(egfrVal+25);
+    else if(d.doseType==='flat') theoreticalDose=d.dose;
+
     return {
       name: d.name,
+      route: d.route || inferRoute(d),
+      plannedDose: theoreticalDose,
+      actualDose: doseVal,
       doseType: d.doseType,
       baseDose: d.dose,
       unit: d.unit,
+      oralStrength: d.oralStrength || 0,
       calculatedDose: doseVal,
       maxDose: d.maxDose,
       volume: d.volume,
@@ -1167,9 +1339,11 @@ function saveRecord(){
   const drugsCopy = drugs.map(d => ({
     id: d.id,
     name: d.name,
+    route: d.route || inferRoute(d),
     doseType: d.doseType,
     dose: d.dose,
     unit: d.unit,
+    oralStrength: d.oralStrength || 0,
     diluent: d.diluent,
     volume: d.volume,
     infTime: d.infTime,
@@ -1210,8 +1384,8 @@ function saveAsTemplate() {
     cat: cat,
     cycle: cycleDays,
     indication: 'Phác đồ kết xuất từ bộ tính liều lâm sàng hiện hành',
-    drugs: drugs.map(d => ({
-      name: d.name, doseType: d.doseType, dose: d.dose, unit: d.unit, diluent: d.diluent, volume: d.volume, infTime: d.infTime, days: [...d.days], maxDose: d.maxDose, instruction: d.instruction || ''
+    drugs: drugs.map(d => normalizeDrug({
+      name: d.name, route: d.route || inferRoute(d), doseType: d.doseType, dose: d.dose, unit: cleanDoseUnit(d.unit,d.doseType), oralStrength: d.oralStrength || 0, diluent: d.diluent, volume: d.volume, infTime: d.infTime, days: [...d.days], maxDose: d.maxDose, instruction: d.instruction || ''
     }))
   };
 
@@ -1223,27 +1397,185 @@ function saveAsTemplate() {
   alert(`Đã xuất cấu trúc phác đồ "${name}" vào thư viện mẫu cá nhân thành công!`);
 }
 
-function calcDI(patientRecords) {
-  // Returns dose intensity metrics per patient record set (sorted ascending by date)
-  // RDI = (received total dose / planned total dose) * 100
-  // DI per drug = mg/m²/week = dose / (BSA_used * weeks_of_cycle)
-  // We use doseReductionPct as a proxy for RDI per cycle
-  let rdiHistory = patientRecords.map(r => ({
-    cycle: r.calculatedCycle,
-    dateInf: r.dateInf,
-    rdi: r.doseReductionPct != null ? r.doseReductionPct : 100,
-    cycleDays: r.cycleDays || 21,
-    bsa: parseFloat(r.bsa) || 0,
-    drugSnapshot: r.drugSnapshot || [],
-    regimen: r.regimen
-  }));
-  
-  // Overall average RDI across all cycles
-  const avgRDI = rdiHistory.length > 0 
-    ? (rdiHistory.reduce((s,x) => s + x.rdi, 0) / rdiHistory.length).toFixed(1)
-    : null;
-  
-  return { rdiHistory, avgRDI };
+function calcDI(patientRecords){
+
+  if(!patientRecords || patientRecords.length===0){
+    return {
+      rdiHistory: [],
+      avgRDI: null,
+      cumulativeRDI: null
+    };
+  }
+
+  patientRecords.sort(
+    (a,b)=>a.dateInf.localeCompare(b.dateInf)
+  );
+
+  const firstCycleDate =
+    new Date(patientRecords[0].dateInf);
+
+  let rdiHistory = [];
+
+  let totalPlannedDose = 0;
+  let totalActualDose = 0;
+
+  patientRecords.forEach((r,idx)=>{
+
+    const cycleDays =
+      parseInt(r.cycleDays)||21;
+
+    const plannedFactor = 1;
+
+    let actualFactor =
+      (parseFloat(r.doseReductionPct)||100)/100;
+
+    if(Array.isArray(r.drugSnapshot) && r.drugSnapshot.length>0){
+      const doseRatios = r.drugSnapshot
+        .map(ds=>{
+          const planned = parseFloat(ds.plannedDose)||0;
+          const actual = parseFloat(ds.actualDose != null ? ds.actualDose : ds.calculatedDose)||0;
+          return planned>0 ? actual/planned : null;
+        })
+        .filter(v=>v!=null && isFinite(v));
+
+      if(doseRatios.length>0){
+        actualFactor =
+          doseRatios.reduce((s,v)=>s+v,0)/
+          doseRatios.length;
+      }
+    }
+
+    const theoreticalDI =
+      plannedFactor/(cycleDays/7);
+
+    const actualDI =
+      actualFactor/(cycleDays/7);
+
+    const cycleRDI =
+      (actualDI/theoreticalDI)*100;
+
+    totalPlannedDose += plannedFactor;
+    totalActualDose += actualFactor;
+
+    rdiHistory.push({
+      cycle:
+        r.calculatedCycle || idx+1,
+
+      dateInf:
+        r.dateInf,
+
+      regimen:
+        r.regimen,
+
+      cycleDays:
+        cycleDays,
+
+      theoreticalDI:
+        theoreticalDI,
+
+      actualDI:
+        actualDI,
+
+      rdi:
+        Number(cycleRDI.toFixed(1))
+    });
+
+  });
+
+  const lastRecord =
+    patientRecords[
+      patientRecords.length-1
+    ];
+
+  const lastCycleDays =
+    parseInt(lastRecord.cycleDays)||21;
+
+  const lastCycleDate =
+    new Date(lastRecord.dateInf);
+
+  const actualTreatmentDays =
+    (
+      (lastCycleDate-firstCycleDate)
+      /(1000*60*60*24)
+    )
+    +
+    lastCycleDays;
+
+  const actualTreatmentWeeks =
+    actualTreatmentDays/7;
+
+  const plannedTreatmentWeeks =
+    patientRecords.reduce(
+      (s,r)=>
+        s+(parseInt(r.cycleDays)||21),
+      0
+    )/7;
+
+  const cumulativePlannedDI =
+    totalPlannedDose/
+    plannedTreatmentWeeks;
+
+  const effectiveTreatmentWeeks =
+    Math.max(
+      actualTreatmentWeeks,
+      plannedTreatmentWeeks
+    );
+
+  const cumulativeActualDI =
+    totalActualDose/
+    effectiveTreatmentWeeks;
+
+  const rawCumulativeRDI =
+    cumulativePlannedDI>0
+      ?
+      (
+        cumulativeActualDI/
+        cumulativePlannedDI
+      )*100
+      :
+      0;
+
+  const cumulativeRDI =
+    Math.min(
+      100,
+      rawCumulativeRDI
+    );
+
+  return {
+
+    rdiHistory,
+
+    avgRDI:
+      Number(
+        cumulativeRDI.toFixed(1)
+      ),
+
+    cumulativeRDI:
+      Number(
+        cumulativeRDI.toFixed(1)
+      ),
+
+    cumulativeActualDI:
+      Number(
+        cumulativeActualDI.toFixed(3)
+      ),
+
+    cumulativePlannedDI:
+      Number(
+        cumulativePlannedDI.toFixed(3)
+      ),
+
+    actualTreatmentWeeks:
+      Number(
+        actualTreatmentWeeks.toFixed(1)
+      ),
+
+    effectiveTreatmentWeeks:
+      Number(
+        effectiveTreatmentWeeks.toFixed(1)
+      )
+
+  };
 }
 
 function getDITagHTML(rdi) {
@@ -1301,6 +1633,10 @@ function renderHistory(){
     let p = integratedPatients[key];
     let ascRecords = [...p.records].sort((a,b) => a.dateInf.localeCompare(b.dateInf));
     let { rdiHistory, avgRDI } = calcDI(ascRecords);
+    const rdiByCycleKey = {};
+    rdiHistory.forEach(x => {
+      rdiByCycleKey[`${x.cycle}|${x.dateInf}|${x.regimen}`] = x.rdi;
+    });
     
     let totalCycles = p.records.length;
     let latestRecord = ascRecords[ascRecords.length - 1];
@@ -1396,7 +1732,8 @@ function renderHistory(){
         </div>`;
       }
 
-      let rdiVal = r.doseReductionPct != null ? r.doseReductionPct : 100;
+      let rdiVal = rdiByCycleKey[`${r.calculatedCycle}|${r.dateInf}|${r.regimen}`];
+      if(rdiVal == null) rdiVal = r.doseReductionPct != null ? r.doseReductionPct : 100;
       
       return `
       <div class="timeline-row">
@@ -1509,12 +1846,10 @@ function loadRecord(i){
   if(r.plannedCycles) document.getElementById('planned-cycles').value=r.plannedCycles;
   const drEl = document.getElementById('dose-reduction-pct');
   if(r.doseReductionPct != null) {
-    const opts = Array.from(drEl.options).map(o => o.value);
-    if(opts.includes(String(r.doseReductionPct))) drEl.value=String(r.doseReductionPct);
-    else { drEl.value='custom'; }
+    drEl.value=String(r.doseReductionPct);
   }
 
-  drugs=r.drugs.map(d=>({...d}));
+  drugs=r.drugs.map(d=>normalizeDrug(d));
   drugCounter=drugs.length;
   renderDrugs();recalc();showTab('calc');
 }
@@ -1636,6 +1971,11 @@ function exportPatientExcel(key) {
   
   if (patientRecords.length === 0) return;
   patientRecords.sort((a, b) => a.dateInf.localeCompare(b.dateInf));
+  const { rdiHistory } = calcDI([...patientRecords]);
+  const rdiByCycleKey = {};
+  rdiHistory.forEach(x => {
+    rdiByCycleKey[`${x.cycle}|${x.dateInf}|${x.regimen}`] = x.rdi;
+  });
   
   let first = patientRecords[0];
   
@@ -1670,6 +2010,8 @@ function exportPatientExcel(key) {
       <tbody>`;
   
   patientRecords.forEach(r => {
+    let rdiVal = rdiByCycleKey[`${r.calculatedCycle}|${r.dateInf}|${r.regimen}`];
+    if(rdiVal == null) rdiVal = r.doseReductionPct != null ? r.doseReductionPct : 100;
     tableHtml += `
       <tr>
         <td style="text-align: center; font-weight: bold;">Chu kỳ ${r.calculatedCycle}</td>
@@ -1680,7 +2022,7 @@ function exportPatientExcel(key) {
         <td>${r.ptHt || '—'}</td>
         <td>${r.bsa || '—'}</td>
         <td>${r.egfr || '—'}</td>
-        <td style="text-align:center; font-weight:bold;">${r.doseReductionPct != null ? r.doseReductionPct + '%' : '100%'}</td>
+        <td style="text-align:center; font-weight:bold;">${rdiVal}%</td>
         <td>${r.ts}</td>
       </tr>`;
   });
