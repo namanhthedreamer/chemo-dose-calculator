@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Công cụ tính liều hóa chất & Xuất Y lệnh lâm sàng - Version 5.0 (Cycle Tracking & Dose Intensity)</title>
+<style>
+:root {
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f9fafb;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-border-primary: #111827;
+  --color-border-secondary: #e5e7eb;
+  --color-border-tertiary: #f3f4f6;
+  --border-radius-md: 6px;
+  --border-radius-lg: 8px;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--color-background-primary);color:var(--color-text-primary);font-family:var(--font-sans);padding:0 1rem}
+.app{padding:1rem 0;max-width:1200px;margin:0 auto}
+.section{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-bottom:1rem;position:relative}
+.sec-title{font-size:12px;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem;display:flex;align-items:center;gap:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid4{display:grid;grid-template-columns:1.2fr 2fr 1fr 1fr;gap:12px}
+@media(max-width:768px){ .grid2, .grid3, .grid4 { grid-template-columns: 1fr; } }
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;color:var(--color-text-secondary);font-weight:500}
+.field input,.field select{width:100%;height:36px;padding:0 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:13px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--color-border-primary)}
+.metric-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+@media(max-width:480px){ .metric-row { grid-template-columns: 1fr; } }
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:0.75rem 1rem;border:0.5px solid var(--color-border-tertiary)}
+.metric .lbl{font-size:11px;color:var(--color-text-secondary);margin-bottom:4px}
+.metric .val{font-size:20px;font-weight:600;color:var(--color-text-primary)}
+.metric .unit{font-size:11px;color:var(--color-text-secondary)}
+.drug-block{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:1rem;margin-bottom:0.75rem;background:var(--color-background-primary)}
+.drug-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.badge{font-size:11px;padding:2px 7px;border-radius:var(--border-radius-md);font-weight:500}
+.b-bsa{background:#E6F1FB;color:#0C447C}
+.b-auc{background:#EAF3DE;color:#27500A}
+.b-flat{background:#FAEEDA;color:#633806}
+.drug-result{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px}
+.rc{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:0.5rem 0.75rem;border:0.5px solid var(--color-border-tertiary)}
+.rc .rl{font-size:11px;color:var(--color-text-secondary);margin-bottom:2px}
+.rc .rv{font-size:14px;font-weight:600;color:var(--color-text-primary)}
+.btn-primary{height:36px;padding:0 1.25rem;border:0.5px solid var(--color-border-primary);border-radius:var(--border-radius-md);background:var(--color-text-primary);color:var(--color-background-primary);font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn-sec{height:34px;padding:0 1rem;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;color:var(--color-text-primary);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn-danger{height:30px;padding:0 0.6rem;border:0.5px solid #F09595;border-radius:var(--border-radius-md);background:transparent;color:#A32D2D;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.btn-add{width:100%;height:34px;border:0.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;color:var(--color-text-secondary);font-size:13px;cursor:pointer;margin-top:0.5rem}
+.btn-add:hover{border-color:var(--color-border-primary);color:var(--color-text-primary)}
+.dtb{padding:3px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:12px;cursor:pointer;background:transparent;color:var(--color-text-secondary)}
+.dtb.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.tab-bar {display:flex;gap:6px;margin-bottom:1rem;border-bottom:0.5px solid var(--color-border-tertiary);padding-bottom:6px}
+.tab{padding:6px 14px;border:none;background:none;font-size:13px;color:var(--color-text-secondary);cursor:pointer;border-radius:var(--border-radius-md);display:flex;align-items:center;gap:6px}
+.tab.active{background:var(--color-text-primary);color:var(--color-background-primary)}
+.hidden{display:none}
+.warn{background:#FAEEDA;border:0.5px solid #FAC775;border-radius:var(--border-radius-md);padding:0.6rem 0.9rem;font-size:12px;color:#633806;margin-top:0.75rem}
+.sch-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.sch-table th{text-align:left;padding:7px 8px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);font-weight:500;font-size:11px}
+.sch-table td{padding:7px 8px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary);font-size:13px;word-break:break-word}
+.sch-table tr:last-child td{border-bottom:none}
+.tag-day{display:inline-block;background:#EEEDFE;color:#3C3489;font-size:11px;padding:2px 6px;border-radius:4px;font-weight:600}
+.actions{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+.regimen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:1rem}
+.reg-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:0.75rem;cursor:pointer;transition:all 0.15s ease}
+.reg-card:hover{border-color:var(--color-border-primary);background:var(--color-background-secondary)}
+.reg-card.selected{border:1.5px solid #378ADD;background:#E6F1FB}
+.reg-card .rn{font-size:13px;font-weight:600;color:var(--color-text-primary)}
+.reg-card .rd{font-size:11px;color:var(--color-text-secondary);margin-top:3px}
+.reg-card .rt{font-size:10px;margin-top:5px;padding:2px 6px;border-radius:4px;display:inline-block;font-weight:500}
+.cat-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.cat-btn{padding:4px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:12px;cursor:pointer;background:transparent;color:var(--color-text-secondary)}
+.cat-btn.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.eviq-note{font-size:11px;color:var(--color-text-secondary);margin-top:0.5rem;font-style:italic}
+.ui-divider {border: 0;border-top: 1px solid var(--color-border-secondary);margin: 1.25rem 0;width: 100%}
+.ui-divider-dashed {border: 0;border-top: 1px dashed var(--color-border-secondary);margin: 1rem 0;width: 100%}
+.db-panel {background: #ffffff; border: 1px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 12px; margin-top: 10px;}
+.cb-label {display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text-primary); cursor: pointer; margin-right: 15px;}
+.cb-label input[type="checkbox"] {width: 15px; height: 15px; cursor: pointer;}
+.radio-label {display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text-primary); cursor: pointer; margin-right: 15px;}
+.radio-label input[type="radio"] {width: 15px; height: 15px; cursor: pointer;}
+.analysis-box {background: #edf2f7; border-left: 4px solid #4a5568; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 12px;}
+.print-element { display: none !important; }
+.di-bar-wrap{background:#e5e7eb;border-radius:4px;height:10px;flex:1;min-width:80px;overflow:hidden;}
+.di-bar{height:10px;border-radius:4px;transition:width 0.4s;}
+.di-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;}
+.di-ok{background:#D1FAE5;color:#065F46;}
+.di-warn{background:#FEF9C3;color:#92400E;}
+.di-low{background:#FEE2E2;color:#991B1B;}
+.cycle-badge{display:inline-block;background:#EDE9FE;color:#4C1D95;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;}
+.timeline-row{display:flex;align-items:stretch;gap:0;margin-bottom:0;}
+.tl-dot{display:flex;flex-direction:column;align-items:center;width:28px;flex-shrink:0;}
+.tl-dot-circle{width:12px;height:12px;border-radius:50%;background:#4C1D95;border:2px solid #7C3AED;flex-shrink:0;margin-top:14px;}
+.tl-dot-line{flex:1;width:2px;background:#DDD6FE;margin-top:2px;}
+.tl-card{flex:1;background:#fff;border:0.5px solid #e5e7eb;border-radius:var(--border-radius-md);padding:10px 14px;margin-bottom:8px;}
+.di-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px;}
+
+@media print {
+  .no-print { display: none !important; }
+  .print-element { display: block !important; }
+  div.print-element { display: block !important; }
+  table.print-element { display: table !important; }
+  tr.print-element { display: table-row !important; }
+  td.print-element, th.print-element { display: table-cell !important; }
+  
+  body { background: white !important; color: black !important; padding: 0 !important; }
+  .app { padding: 0 !important; max-width: 100% !important; }
+  .section { border: none !important; padding: 0 !important; background: transparent !important; margin-bottom: 0 !important;}
+  
+  .sch-table { border: 1.5px solid #000 !important; border-collapse: collapse !important; width: 100% !important; table-layout: auto !important;}
+  .sch-table th, .sch-table td { border: 1px solid #000 !important; color: #000 !important; padding: 8px 10px !important; font-size: 12px !important; }
+  .sch-table th { background: #f3f4f6 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .tag-day { background: none !important; color: #000 !important; padding: 0 !important; font-size: 12px !important; font-weight: bold !important; }
+}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+</head>
+<body>
+
+<div class="app">
+<h2 class="sr-only" style="display:none;">Công cụ tính liều hóa chất & Xuất Y lệnh lâm sàng</h2>
+
+<div class="tab-bar no-print">
+  <button class="tab active" onclick="showTab('templates')"><i class="ti ti-layout-grid" aria-hidden="true"></i> Phác đồ mẫu</button>
+  <button class="tab" onclick="showTab('calc')"><i class="ti ti-calculator" aria-hidden="true"></i> Tính liều</button>
+  <button class="tab" onclick="showTab('schedule')"><i class="ti ti-calendar" aria-hidden="true"></i> Lịch truyền / Y lệnh</button>
+  <button class="tab" onclick="showTab('history')"><i class="ti ti-history" aria-hidden="true"></i> Hồ sơ bệnh nhân</button>
+</div>
+
+<div id="tab-templates">
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-book" aria-hidden="true"></i> Thư viện phác đồ — tham chiếu eviQ</div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 1rem;">
+      <div class="cat-tabs" id="cat-tabs" style="margin-bottom: 0;"></div>
+      <button class="btn-primary no-print" onclick="toggleCustomForm()"><i class="ti ti-plus" aria-hidden="true"></i> Tự tạo phác đồ mới</button>
+    </div>
+
+    <div id="custom-regimen-form" class="hidden" style="background: var(--color-background-secondary); border: 1px dashed var(--color-border-primary); border-radius: var(--border-radius-md); padding: 1.25rem; margin-bottom: 1.25rem;">
+      <div style="font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 10px;"><i class="ti ti-edit" aria-hidden="true"></i> Nhập thông tin phác đồ mẫu mới</div>
+      <div class="grid3">
+        <div class="field"><label>Tên phác đồ</label><input id="cr-name" type="text" placeholder="Vd: FOLFIRI (Modified)"></div>
+        <div class="field"><label>Nhóm bệnh</label><input id="cr-cat" type="text" placeholder="Vd: Đại trực tàng"></div>
+        <div class="field"><label>Chu kỳ (ngày)</label><input id="cr-cycle" type="number" placeholder="21" value="21"></div>
+      </div>
+      <div class="field" style="margin-top: 10px;">
+        <label>Chỉ định / Ghi chú lâm sàng</label>
+        <input id="cr-indication" type="text" placeholder="Vd: Phác đồ tùy chỉnh chuẩn khoa...">
+      </div>
+      <div class="actions" style="margin-top: 1rem;">
+        <button class="btn-primary" onclick="saveCustomTemplate()">Lưu vào thư viện</button>
+        <button class="btn-sec" onclick="toggleCustomForm()">Hủy</button>
+      </div>
+    </div>
+
+    <hr class="ui-divider">
+
+    <div class="regimen-grid" id="regimen-grid"></div>
+    
+    <div id="regimen-preview" class="hidden">
+      <div style="border-top:0.5px solid var(--color-border-tertiary);padding-top:1rem;margin-top:0.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;flex-wrap:wrap;gap:8px">
+          <div id="prev-meta-block" style="flex:1;">
+            <div style="margin-bottom: 4px;">
+              <span id="prev-name" style="font-size:15px;font-weight:500;color:var(--color-text-primary)"></span>
+              <span id="prev-cycle" style="font-size:12px;color:var(--color-text-secondary);margin-left:10px"></span>
+            </div>
+            <div id="prev-indication" style="font-size:12px;color:var(--color-text-secondary)"></div>
+          </div>
+          <div style="display:flex; gap:8px;" class="no-print">
+            <button class="btn-sec" id="btn-edit-template" onclick="toggleEditTemplate()"><i class="ti ti-edit" aria-hidden="true"></i> Chỉnh sửa cấu trúc mẫu</button>
+            <button class="btn-primary" onclick="loadRegimen()"><i class="ti ti-arrow-right" aria-hidden="true"></i> Dùng tính liều bệnh nhân</button>
+          </div>
+        </div>
+
+        <table class="sch-table" style="margin-bottom:0.5rem">
+          <thead><tr id="prev-table-header">
+            <th>Thuốc</th><th>Liều cơ sở</th><th>Loại liều</th><th>Dung môi</th><th>T.tích pha</th><th>T/gian truyền</th><th>Ngày dùng (D)</th><th>Cách dùng</th><th>Liều trần (Max)</th><th class="tmpl-edit-col hidden">Thao tác</th>
+          </tr></thead>
+          <tbody id="prev-table"></tbody>
+        </table>
+        <div class="eviq-note" id="prev-ref"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-calc" class="hidden">
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-user" aria-hidden="true"></i> Thông tin bệnh nhân & Hành chính</div>
+    <div class="grid4" style="margin-bottom:12px">
+      <div class="field"><label>Mã người bệnh (ID)</label><input id="pt-id" type="text" placeholder="Vd: BN-318808"></div>
+      <div class="field"><label>Họ tên bệnh nhân</label><input id="pt-name" type="text" placeholder="Nguyễn Văn A"></div>
+      <div class="field"><label>Tuổi</label><input id="pt-age" type="number" placeholder="55" min="1" max="120" oninput="recalc()"></div>
+      <div class="field"><label>Giới tính</label><select id="pt-sex" onchange="recalc()"><option value="male">Nam</option><option value="female">Nữ</option></select></div>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Chẩn đoán bệnh</label>
+      <input id="pt-diagnosis" type="text" placeholder="Vd: Ung thư đại tràng sigma giai đoạn IV, di căn gan · Mã ICD-10: C18.7">
+    </div>
+    <div class="grid3" style="margin-bottom:12px">
+      <div class="field"><label>Cân nặng (kg)</label><input id="pt-wt" type="number" placeholder="60" step="0.1" oninput="recalc()"></div>
+      <div class="field"><label>Chiều cao (cm)</label><input id="pt-ht" type="number" placeholder="165" step="0.1" oninput="recalc()"></div>
+      <div class="field"><label>Creatinine nội sinh (µmol/L)</label><input id="pt-cr" type="number" placeholder="80" step="1" oninput="recalc()"></div>
+    </div>
+    
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="field">
+        <label>Ngày truyền hóa chất</label>
+        <input id="pt-date-inf" type="date" onchange="updateNextDate()">
+      </div>
+      <div class="field">
+        <label>Ngày hẹn lịch truyền tiếp theo (Tự động cập nhật / Có thể sửa)</label>
+        <input id="pt-date-next" type="date">
+      </div>
+    </div>
+    
+    <div style="margin-top:12px; margin-bottom:12px;">
+      <button class="btn-sec" type="button" onclick="toggleAdminFields()" style="height:28px; padding:0 10px; font-size:11px;">
+        <i class="ti ti-settings"></i> Cấu hình thông tin hành chính phiếu in
+      </button>
+    </div>
+    <div id="admin-fields-block" class="hidden" style="margin-bottom:15px; padding:12px; background:var(--color-background-secondary); border:0.5px dashed var(--color-border-secondary); border-radius:var(--border-radius-md);">
+      <div class="grid3">
+        <div class="field"><label>Hệ thống Y tế / Cơ sở điều trị</label><input id="admin-hospital" type="text" value="HỆ THỐNG Y TẾ ĐIỀU TRỊ THỰC THI"></div>
+        <div class="field"><label>Khoa / Phòng đơn vị</label><input id="admin-dept" type="text" value="KHOA UNG BƯỚU / ĐƠN VỊ TRUYỀN HÓA CHẤT"></div>
+        <div class="field"><label>Tiêu đề phiếu y lệnh</label><input id="admin-title" type="text" value="PHIẾU Y LỆNH & LỊCH TRUYỀN HÓA CHẤT"></div>
+      </div>
+    </div>
+    
+    <hr class="ui-divider-dashed">
+    
+    <div class="metric-row">
+      <div class="metric"><div class="lbl">BSA (Mosteller)</div><div class="val" id="bsa-val">—</div><div class="unit">m²</div></div>
+      <div class="metric"><div class="lbl">eGFR (CKD-EPI 2021)</div><div class="val" id="crcl-val">—</div><div class="unit">mL/min/1.73m²</div></div>
+      <div class="metric"><div class="lbl">BMI</div><div class="val" id="bmi-val">—</div><div class="unit">kg/m²</div></div>
+    </div>
+    <div class="warn" id="bsa-warning" style="display:none"><i class="ti ti-alert-triangle" aria-hidden="true"></i> BSA &gt; 2.0 m² — Cân nhắc giới hạn liều trần hoặc hiệu chỉnh liều theo thể trạng lâm sàng.</div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-pill" aria-hidden="true"></i> Cấu hình cấu trúc liều phác đồ hiện hành</div>
+    <div class="grid2" style="margin-bottom:1rem">
+      <div class="field"><label>Tên phác đồ</label><input id="regimen-name" type="text" placeholder="Vd: FOLFOX-6, CHOP..."></div>
+      <div class="field"><label>Chu kỳ (ngày)</label>
+        <select id="cycle-days" onchange="updateNextDate()"><option value="7">7</option><option value="14">14</option><option value="21" selected>21</option><option value="28">28</option></select>
+      </div>
+    </div>
+    <div class="grid3" style="margin-bottom:1rem; padding:12px; background:var(--color-background-secondary); border:0.5px dashed var(--color-border-secondary); border-radius:var(--border-radius-md);">
+      <div class="field">
+        <label>Chu kỳ truyền hiện tại (số thứ tự)</label>
+        <input id="current-cycle-no" type="number" min="1" placeholder="Vd: 1, 2, 3..." value="1">
+      </div>
+      <div class="field">
+        <label>Tổng số chu kỳ kế hoạch</label>
+        <input id="planned-cycles" type="number" min="1" placeholder="Vd: 6, 8, 12...">
+      </div>
+      <div class="field">
+        <label>Liều dùng thực tế (% so với chuẩn)</label>
+        <select id="dose-reduction-pct">
+          <option value="100">100% — Liều chuẩn đầy đủ</option>
+          <option value="90">90% — Giảm 10%</option>
+          <option value="80">80% — Giảm 20%</option>
+          <option value="75">75% — Giảm 25%</option>
+          <option value="66">66% — Giảm 33%</option>
+          <option value="50">50% — Giảm 50%</option>
+          <option value="custom">Tùy chỉnh...</option>
+        </select>
+      </div>
+    </div>
+    
+    <hr class="ui-divider-dashed">
+    
+    <div id="drug-list"></div>
+    <button class="btn-add no-print" onclick="addDrug()"><i class="ti ti-plus" aria-hidden="true"></i> Thêm thuốc/hóa chất mới vào cấu hình</button>
+  </div>
+
+  <div class="actions no-print">
+    <button class="btn-primary" onclick="generateSchedule()"><i class="ti ti-calendar-event" aria-hidden="true"></i> Tạo lịch truyền & Y lệnh</button>
+    <button class="btn-sec" onclick="saveRecord()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Lưu hồ sơ bệnh nhân</button>
+    <button class="btn-sec" onclick="saveAsTemplate()"><i class="ti ti-folder-plus" aria-hidden="true"></i> Xuất lưu thành phác đồ mẫu</button>
+    <button class="btn-sec" onclick="showTab('templates')"><i class="ti ti-layout-grid" aria-hidden="true"></i> Đổi phác đồ khác</button>
+  </div>
+</div>
+
+<div id="tab-schedule" class="hidden">
+  <div class="actions no-print" style="margin-bottom: 1rem;">
+    <button class="btn-primary" onclick="window.print()"><i class="ti ti-printer" aria-hidden="true"></i> In y lệnh / Xuất file PDF</button>
+    <button class="btn-sec" onclick="exportToWord()"><i class="ti ti-file-text" aria-hidden="true"></i> Xuất file Word (.doc)</button>
+    <button class="btn-sec" onclick="showTab('calc')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Quay lại hiệu chỉnh liều</button>
+  </div>
+  <div class="section" style="border:none; padding:0;">
+    <div id="schedule-content">
+      <p style="color:var(--color-text-secondary);font-size:14px; padding:20px;" class="no-print">Vui lòng nhập đầy đủ thông tin bệnh nhân và nhấn nút "Tạo lịch truyền & Y lệnh".</p>
+    </div>
+  </div>
+</div>
+
+<div id="tab-history" class="hidden">
+  <div class="section no-print" style="border: 0.5px solid var(--color-border-primary); background: var(--color-background-secondary);">
+    <div class="sec-title"><i class="ti ti-database" aria-hidden="true"></i> Quản lý cơ sở dữ liệu hệ thống (Cấu hình Xuất / Nhập)</div>
+    
+    <div class="grid2">
+      <div class="db-panel">
+        <div style="font-weight:600; font-size:13px; margin-bottom:8px; color:var(--color-text-primary);"><i class="ti ti-download"></i> Cấu hình Dữ liệu Xuất (Backup)</div>
+        <div style="margin-bottom: 10px;">
+          <label class="cb-label"><input type="checkbox" id="exp-cb-regimens" checked> Thư viện phác đồ mẫu</label>
+          <label class="cb-label"><input type="checkbox" id="exp-cb-records" checked> Danh sách hồ sơ bệnh nhân</label>
+        </div>
+        <button class="btn-primary" style="width:100%; height:32px; font-size:12px;" onclick="exportSystemDataAdvanced()"><i class="ti ti-file-export"></i> Tải File Cấu Hình Chọn Lọc (.json)</button>
+      </div>
+
+      <div class="db-panel">
+        <div style="font-weight:600; font-size:13px; margin-bottom:8px; color:var(--color-text-primary);"><i class="ti ti-upload"></i> Cấu hình Dữ liệu Nhập (Import)</div>
+        <div style="margin-bottom:10px;">
+          <button class="btn-sec" style="width:100%; height:32px; font-size:12px;" onclick="document.getElementById('import-file-advanced').click()"><i class="ti ti-file-search"></i> Chọn File Dữ Liệu Cần Nạp</button>
+          <input type="file" id="import-file-advanced" accept=".json" class="hidden" onchange="analyzeImportFile(event)">
+        </div>
+        
+        <div id="import-analysis-block" class="hidden">
+          <div class="analysis-box" id="analysis-text"></div>
+          <div style="margin-top:8px; margin-bottom:10px;">
+            <div style="font-size:11px; font-weight:600; margin-bottom:4px; color:var(--color-text-secondary);">Chế độ nạp dữ liệu y khoa:</div>
+            <label class="radio-label"><input type="radio" name="importMode" value="merge" checked> <strong>Trộn thêm (Merge)</strong> - Giữ nguyên data hiện tại</label>
+            <label class="radio-label"><input type="radio" name="importMode" value="overwrite"> <strong>Ghi đè (Overwrite)</strong> - Xóa sạch làm lại từ đầu</label>
+          </div>
+          <button class="btn-primary" style="width:100%; height:32px; font-size:12px; background:#2b6cb0; border-color:#2b6cb0;" onclick="executeImportDataAdvanced()"><i class="ti ti-circle-check"></i> Xác nhận thực thi nạp dữ liệu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-history" aria-hidden="true"></i> Danh sách hồ sơ bệnh nhân đã lưu</div>
+    
+    <div style="margin-bottom: 1.25rem; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;" class="no-print">
+      <div class="field" style="flex: 1; min-width: 250px;">
+        <label style="font-weight: 600;">Tìm kiếm nhanh hồ sơ người bệnh</label>
+        <input type="text" id="search-history" placeholder="Nhập họ và tên hoặc mã số ID bệnh nhân cần tìm..." oninput="renderHistory()" style="background: var(--color-background-primary); height: 38px; border-color: var(--color-border-primary);">
+      </div>
+      <button class="btn-sec" onclick="exportHistoryToExcel()" style="height: 38px;"><i class="ti ti-file-spreadsheet"></i> Xuất Toàn Bộ Excel (.xls)</button>
+    </div>
+    
+    <div id="history-content"><p style="color:var(--color-text-secondary);font-size:14px">Chưa có hồ sơ bệnh nhân nào được lưu trữ.</p></div>
+  </div>
+</div>
+</div>
+
+<script>
+const DEFAULT_REGIMENS = [
+  {id:'folfox6',name:'FOLFOX-6',cat:'Đại trực tàng',cycle:14,indication:'Ung thư đại trực tàng giai đoạn tiến xa / bổ trợ (ref: eviQ FOLFOX)',
+   drugs:[
+    {name:'Oxaliplatin',doseType:'bsa',dose:85,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch trung tâm hoặc ngoại vi'},
+    {name:'Leucovorin (Folinic acid)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch đồng thời hoặc sau Oxaliplatin'},
+    {name:'5-Fluorouracil (bolus)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm (Bolus) trên 10-15 phút'},
+    {name:'5-Fluorouracil (infusion 46h)',doseType:'bsa',dose:2400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:2760,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch liên tục bằng máy hoặc bơm tiêm điện trong 46 giờ'}
+   ]},
+  {id:'folfiri',name:'FOLFIRI',cat:'Đại trực tàng',cycle:14,indication:'Ung thư đại trực tàng tiến xa, line 1–2 (eviQ FOLFIRI)',
+   drugs:[
+    {name:'Irinotecan',doseType:'bsa',dose:180,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:90,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Theo dõi tác dụng phụ cholinergic cấp)'},
+    {name:'Leucovorin',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
+    {name:'5-Fluorouracil (bolus)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm (Bolus)'},
+    {name:'5-Fluorouracil (infusion 46h)',doseType:'bsa',dose:2400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:2760,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch liên tục trong 46 giờ bằng bơm tiêm điện'}
+   ]},
+  {id:'xelox',name:'XELOX (CAPOX)',cat:'Đại trực tàng',cycle:21,indication:'Ung thư đại trực tàng bổ trợ / tiến xa (eviQ CAPOX)',
+   drugs:[
+    {name:'Oxaliplatin',doseType:'bsa',dose:130,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
+    {name:'Capecitabine',doseType:'bsa',dose:1000,unit:'mg/m² × 2 lần/ngày (uongs)',diluent:'Uống (oral)',volume:0,infTime:0,days:[1,2,3,4,5,6,7,8,9,10,11,12,13,14],maxDose:0,instruction:'Uống thuốc với nước trong vòng 30 phút sau bữa ăn sáng và tối'}
+   ]},
+  {id:'act',name:'AC-T (ddAC→T)',cat:'Ung thư vú',cycle:14,indication:'Ung thư vú giai đoạn sớm — bổ trợ/tân bổ trợ (eviQ AC-T)',
+   drugs:[
+    {name:'Doxorubicin',doseType:'bsa',dose:60,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm/Truyền tĩnh mạch tự do (Theo dõi sát vị trí tiêm tránh thoát mạch)'},
+    {name:'Cyclophosphamide',doseType:'bsa',dose:600,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Khuyến khích bệnh nhân uống nhiều nước)'}
+   ]},
+  {id:'paclitaxel-w',name:'Paclitaxel weekly',cat:'Ung thư vú',cycle:7,indication:'Ung thư vú — dùng tuần (eviQ Paclitaxel weekly)',
+   drugs:[
+    {name:'Paclitaxel',doseType:'bsa',dose:80,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Bắt buộc dùng bộ dây truyền chuyên dụng có màng lọc 0.22 micron)'}
+   ]},
+  {id:'chop',name:'CHOP',cat:'Lymphoma',cycle:21,indication:'Lymphoma không Hodgkin — DLBCL, FL (eviQ CHOP)',
+   drugs:[
+    {name:'Cyclophosphamide',doseType:'bsa',dose:750,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
+    {name:'Doxorubicin',doseType:'bsa',dose:50,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm qua dây truyền đang chạy tự do'},
+    {name:'Vincristine',doseType:'flat',dose:1.4,unit:'mg',diluent:'NaCl 0.9%',volume:50,infTime:10,days:[1],maxDose:2,instruction:'Truyền tĩnh mạch chậm hoặc tiêm qua chạc chữ Y. TUYỆT ĐỐI KHÔNG TIÊM TỦY SỐNG.'},
+    {name:'Prednisolone',doseType:'flat',dose:100,unit:'mg/ngày (uongs)',diluent:'Uống (oral)',volume:0,infTime:0,days:[1,2,3,4,5],maxDose:0,instruction:'Uống một lần vào buổi sáng sau ăn'}
+   ]},
+  {id:'carbotax',name:'Carboplatin-Paclitaxel',cat:'Phổi / Buồng trứng',cycle:21,indication:'NSCLC giai đoạn tiến xa; Ung thư buồng trứng (eviQ)',
+   drugs:[
+    {name:'Carboplatin',doseType:'auc',dose:5,unit:'AUC 5',diluent:'Glucose 5%',volume:250,infTime:30,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
+    {name:'Paclitaxel',doseType:'bsa',dose:175,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:180,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch bằng bộ dây có màng lọc 0.22 micron. Dùng trước Carboplatin.'}
+   ]}
+];
+
+let REGIMENS = [];
+let CATS = [];
+let drugs = [];
+let drugCounter = 0;
+let selectedRegimen = null;
+let activeCat = null;
+let isEditingTemplate = false;
+let globalParsedImportData = null;
+
+function initDataStorage() {
+  const stored = localStorage.getItem('chemo_regimens');
+  if (!stored) {
+    localStorage.setItem('chemo_regimens', JSON.stringify(DEFAULT_REGIMENS));
+    REGIMENS = JSON.parse(JSON.stringify(DEFAULT_REGIMENS));
+  } else {
+    REGIMENS = JSON.parse(stored);
+  }
+  CATS = [...new Set(REGIMENS.map(r => r.cat))];
+}
+
+function initDates() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('pt-date-inf').value = today;
+  updateNextDate();
+}
+
+function updateNextDate() {
+  const infDateStr = document.getElementById('pt-date-inf').value;
+  const cycleDays = parseInt(document.getElementById('cycle-days').value) || 21;
+  if (!infDateStr) return;
+  
+  const infDate = new Date(infDateStr);
+  infDate.setDate(infDate.getDate() + cycleDays);
+  document.getElementById('pt-date-next').value = infDate.toISOString().split('T')[0];
+}
+
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '—';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function toggleAdminFields() {
+  document.getElementById('admin-fields-block').classList.toggle('hidden');
+}
+
+function formatDays(daysArray) {
+  if (!Array.isArray(daysArray) || daysArray.length === 0) return '';
+  let sorted = [...daysArray].map(Number).sort((a, b) => a - b);
+  let parts = [];
+  let start = sorted[0];
+  let end = sorted[0];
+  
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === end + 1) {
+      end = sorted[i];
+    } else {
+      if (start === end) parts.push(start.toString());
+      else parts.push(`${start}-${end}`);
+      start = sorted[i];
+      end = sorted[i];
+    }
+  }
+  if (start === end) parts.push(start.toString());
+  else parts.push(`${start}-${end}`);
+  return parts.join(',');
+}
+
+function parseDays(str) {
+  if (!str) return [1];
+  let days = [];
+  let parts = str.toString().split(',');
+  parts.forEach(p => {
+    p = p.trim();
+    if (p.includes('-')) {
+      let range = p.split('-');
+      let start = parseInt(range[0]);
+      let end = parseInt(range[1]);
+      if (!isNaN(start) && !isNaN(end)) {
+        for (let i = start; i <= end; i++) days.push(i);
+      }
+    } else {
+      let val = parseInt(p);
+      if (!isNaN(val)) days.push(val);
+    }
+  });
+  return [...new Set(days)].sort((a, b) => a - b);
+}
+
+function showTab(t){
+  ['templates','calc','schedule','history'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('hidden',x!==t);
+  });
+  document.querySelectorAll('.tab').forEach((b,i)=>{
+    b.classList.toggle('active',['templates','calc','schedule','history'][i]===t);
+  });
+  if(t==='history') renderHistory();
+}
+
+function renderCatTabs(active){
+  const el=document.getElementById('cat-tabs');
+  el.innerHTML='<button class="cat-btn'+(active===null?' active':'')+ '" onclick="filterCat(null)">Tất cả</button>';
+  CATS.forEach(c=>{
+    el.innerHTML+=`<button class="cat-btn${active===c?' active':''}" onclick="filterCat('${c}')">${c}</button>`;
+  });
+}
+
+function filterCat(cat){
+  activeCat=cat;
+  renderCatTabs(cat);
+  renderRegimenGrid(cat);
+}
+
+function renderRegimenGrid(cat){
+  const list=cat?REGIMENS.filter(r=>r.cat===cat):REGIMENS;
+  const el=document.getElementById('regimen-grid');
+  el.innerHTML=list.map(r=>{
+    return `
+    <div class="reg-card${selectedRegimen&&selectedRegimen.id===r.id?' selected':''}" onclick="selectRegimen('${r.id}')" style="position:relative;">
+      <button class="btn-danger no-print" style="position:absolute; top:4px; right:4px; height:20px; padding:0 4px; font-size:10px; border-color:#ff9999;" onclick="deleteRegimenTemplate('${r.id}', event)"><i class="ti ti-trash"></i></button>
+      <div class="rn">${r.name}</div>
+      <div class="rd">${r.cat}</div>
+      <div class="rt" style="background:#EEEDFE;color:#3C3489">${r.cycle} ngày</div>
+    </div>`;
+  }).join('');
+}
+
+function selectRegimen(id){
+  isEditingTemplate = false;
+  document.getElementById('btn-edit-template').innerHTML = '<i class="ti ti-edit"></i> Chỉnh sửa cấu trúc mẫu';
+  document.querySelectorAll('.tmpl-edit-col').forEach(el => el.classList.add('hidden'));
+
+  selectedRegimen=REGIMENS.find(r=>r.id.toString()===id.toString());
+  renderRegimenGrid(activeCat);
+  
+  const pv=document.getElementById('regimen-preview');
+  pv.classList.remove('hidden');
+  
+  document.getElementById('prev-meta-block').innerHTML = `
+    <div style="margin-bottom: 4px;">
+      <span id="prev-name" style="font-size:15px;font-weight:600;color:var(--color-text-primary)">${selectedRegimen.name}</span>
+      <span id="prev-cycle" style="font-size:12px;color:var(--color-text-secondary);margin-left:10px">Chu kỳ ${selectedRegimen.cycle} ngày · ${selectedRegimen.drugs.length} thuốc</span>
+    </div>
+    <div id="prev-indication" style="font-size:12px;color:var(--color-text-secondary)">${selectedRegimen.indication}</div>
+  `;
+
+  const tbody=document.getElementById('prev-table');
+  if (selectedRegimen.drugs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--color-text-secondary); padding:20px;">Phác đồ trống. Nhấn "Chỉnh sửa cấu trúc mẫu" để bổ sung thuốc.</td></tr>';
+  } else {
+    tbody.innerHTML=selectedRegimen.drugs.map(d=>{
+      return `<tr>
+        <td><strong>${d.name}</strong></td>
+        <td>${d.dose} ${d.unit}</td>
+        <td><span class="badge b-${d.doseType}">${d.doseType==='bsa'?'BSA':d.doseType==='auc'?'AUC':'Flat'}</span></td>
+        <td>${d.diluent}</td>
+        <td>${d.volume>0?d.volume+' mL':'—'}</td>
+        <td>${d.infTime>60?(d.infTime/60).toFixed(1)+'h':d.infTime>0?d.infTime+'ph':'—'}</td>
+        <td><span class="tag-day">D${formatDays(d.days)}</span></td>
+        <td style="font-size:11px; color:var(--color-text-secondary); font-style:italic;">${d.instruction || '—'}</td>
+        <td>${d.maxDose>0?d.maxDose+' mg':'Không giới hạn'}</td>
+        <td class="tmpl-edit-col hidden">—</td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('prev-ref').textContent='Nguồn tham chiếu cấu trúc: Thư viện Phác đồ chuẩn eviQ / Cá nhân hóa lưu trữ.';
+  pv.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function toggleEditTemplate() {
+  if(!selectedRegimen) return;
+  isEditingTemplate = !isEditingTemplate;
+  const btn = document.getElementById('btn-edit-template');
+  
+  if (isEditingTemplate) {
+    btn.innerHTML = '<i class="ti ti-eye"></i> Hủy chỉnh sửa';
+    renderTemplateEditor();
+  } else {
+    btn.innerHTML = '<i class="ti ti-edit"></i> Chỉnh sửa cấu trúc mẫu';
+    selectRegimen(selectedRegimen.id);
+  }
+}
+
+function renderTemplateEditor() {
+  document.querySelectorAll('.tmpl-edit-col').forEach(el => el.classList.remove('hidden'));
+  
+  document.getElementById('prev-meta-block').innerHTML = `
+    <div class="grid3" style="margin-bottom:8px;">
+      <div class="field"><label>Tên phác đồ gốc</label><input id="edit-tmpl-name" type="text" value="${selectedRegimen.name}"></div>
+      <div class="field"><label>Nhóm bệnh</label><input id="edit-tmpl-cat" type="text" value="${selectedRegimen.cat}"></div>
+      <div class="field"><label>Chu kỳ (ngày)</label><input id="edit-tmpl-cycle" type="number" value="${selectedRegimen.cycle}"></div>
+    </div>
+    <div class="field"><label>Chỉ định / Ghi chú phác đồ mẫu</label><input id="edit-tmpl-ind" type="text" value="${selectedRegimen.indication}"></div>
+  `;
+  
+  const tbody = document.getElementById('prev-table');
+  let html = selectedRegimen.drugs.map((d, idx) => {
+    return `
+      <tr data-idx="${idx}">
+        <td><input type="text" class="tmpl-d-name" value="${d.name}" style="width:100%; padding:4px; font-weight:bold;"></td>
+        <td><input type="number" step="0.1" class="tmpl-d-dose" value="${d.dose}" style="width:55px; padding:4px;"></td>
+        <td>
+          <select class="tmpl-d-type" style="padding:4px; width:100%;">
+            <option value="bsa" ${d.doseType==='bsa'?'selected':''}>BSA</option>
+            <option value="auc" ${d.doseType==='auc'?'selected':''}>AUC</option>
+            <option value="flat" ${d.doseType==='flat'?'selected':''}>Flat</option>
+          </select>
+        </td>
+        <td>
+          <select class="tmpl-d-diluent" style="padding:4px; width:100%;">
+            <option ${d.diluent==='NaCl 0.9%'?'selected':''}>NaCl 0.9%</option>
+            <option ${d.diluent==='Glucose 5%'?'selected':''}>Glucose 5%</option>
+            <option ${d.diluent==='Nước cất'?'selected':''}>Nước cất</option>
+            <option ${d.diluent==='Uống (oral)'?'selected':''}>Uống (oral)</option>
+            <option ${d.diluent==='Không pha loãng'?'selected':''}>Không pha loãng</option>
+          </select>
+        </td>
+        <td><input type="number" class="tmpl-d-vol" value="${d.volume}" style="width:50px; padding:4px;"></td>
+        <td><input type="number" class="tmpl-d-time" value="${d.infTime}" style="width:50px; padding:4px;"></td>
+        <td><input type="text" class="tmpl-d-days" value="${formatDays(d.days)}" style="width:70px; padding:4px;" placeholder="1,2-14"></td>
+        <td><input type="text" class="tmpl-d-ins" value="${d.instruction || ''}" style="width:100%; padding:4px; font-size:11px;" placeholder="Cách dùng..."></td>
+        <td><input type="number" class="tmpl-d-max" value="${d.maxDose || 0}" style="width:55px; padding:4px;"></td>
+        <td class="tmpl-edit-col"><button class="btn-danger" style="padding:2px 6px; height:auto;" onclick="removeTmplDrug(${idx})"><i class="ti ti-trash"></i></button></td>
+      </tr>
+    `;
+  }).join('');
+  
+  html += `
+    <tr class="no-print">
+      <td colspan="10" style="padding:12px 0; background:none;">
+        <button class="btn-sec" onclick="addTmplDrug()"><i class="ti ti-plus"></i> Thêm hoạt chất mới vào mẫu</button>
+        <button class="btn-primary" style="float:right;" onclick="saveTemplateChanges()"><i class="ti ti-device-floppy"></i> Lưu toàn bộ cấu trúc phác đồ</button>
+      </td>
+    </tr>
+  `;
+  tbody.innerHTML = html;
+}
+
+function removeTmplDrug(idx) {
+  selectedRegimen.drugs.splice(idx, 1);
+  renderTemplateEditor();
+}
+
+function addTmplDrug() {
+  selectedRegimen.drugs.push({
+    name: 'Thuốc mới', doseType: 'bsa', dose: 0, unit: 'mg/m²', diluent: 'NaCl 0.9%', volume: 250, infTime: 60, days: [1], maxDose: 0, instruction: ''
+  });
+  renderTemplateEditor();
+}
+
+function saveTemplateChanges() {
+  const name = document.getElementById('edit-tmpl-name').value.trim();
+  const cat = document.getElementById('edit-tmpl-cat').value.trim() || 'Cá nhân';
+  const cycle = parseInt(document.getElementById('edit-tmpl-cycle').value) || 21;
+  const ind = document.getElementById('edit-tmpl-ind').value.trim();
+  
+  if (!name) { alert('Tên phác đồ mẫu không được để trống!'); return; }
+  
+  const rows = document.querySelectorAll('#prev-table tr[data-idx]');
+  let updatedDrugs = [];
+  rows.forEach(row => {
+    const dName = row.querySelector('.tmpl-d-name').value.trim();
+    const dDose = parseFloat(row.querySelector('.tmpl-d-dose').value) || 0;
+    const dType = row.querySelector('.tmpl-d-type').value;
+    const dDiluent = row.querySelector('.tmpl-d-diluent').value;
+    const dVol = parseFloat(row.querySelector('.tmpl-d-vol').value) || 0;
+    const dTime = parseFloat(row.querySelector('.tmpl-d-time').value) || 0;
+    const dDaysStr = row.querySelector('.tmpl-d-days').value;
+    const dIns = row.querySelector('.tmpl-d-ins').value.trim();
+    const dMax = parseFloat(row.querySelector('.tmpl-d-max').value) || 0;
+    
+    let unit = 'mg/m²';
+    if (dType === 'auc') unit = 'AUC';
+    if (dType === 'flat') unit = 'mg';
+    
+    updatedDrugs.push({
+      name: dName, doseType: dType, dose: dDose, unit: unit, diluent: dDiluent, volume: dVol, infTime: dTime, days: parseDays(dDaysStr), maxDose: dMax, instruction: dIns
+    });
+  });
+  
+  selectedRegimen.name = name;
+  selectedRegimen.cat = cat;
+  selectedRegimen.cycle = cycle;
+  selectedRegimen.indication = ind;
+  selectedRegimen.drugs = updatedDrugs;
+  
+  const rIdx = REGIMENS.findIndex(r => r.id.toString() === selectedRegimen.id.toString());
+  if (rIdx !== -1) REGIMENS[rIdx] = selectedRegimen;
+  
+  localStorage.setItem('chemo_regimens', JSON.stringify(REGIMENS));
+  isEditingTemplate = false;
+  
+  initDataStorage();
+  filterCat(null);
+  selectRegimen(selectedRegimen.id);
+  alert('Đã cập nhật thay đổi cấu trúc phác đồ mẫu vào hệ thống!');
+}
+
+function toggleCustomForm() {
+  document.getElementById('custom-regimen-form').classList.toggle('hidden');
+}
+
+function saveCustomTemplate() {
+  const name = document.getElementById('cr-name').value.trim();
+  const cat = document.getElementById('cr-cat').value.trim() || 'Cá nhân';
+  const cycle = parseInt(document.getElementById('cr-cycle').value) || 21;
+  const indication = document.getElementById('cr-indication').value.trim() || 'Phác đồ do người dùng tự xây dựng';
+
+  if (!name) { alert('Vui lòng điền tên phác đồ mẫu!'); return; }
+
+  const newRegimen = {
+    id: 'custom-' + Date.now(), name: name, cat: cat, cycle: cycle, indication: indication, drugs: []
+  };
+
+  REGIMENS.unshift(newRegimen);
+  localStorage.setItem('chemo_regimens', JSON.stringify(REGIMENS));
+
+  initDataStorage();
+  filterCat(null);
+  toggleCustomForm();
+  selectRegimen(newRegimen.id);
+}
+
+function deleteRegimenTemplate(id, event) {
+  event.stopPropagation();
+  if(!confirm('Bạn có chắc chắn muốn xóa hẳn phác đồ mẫu này khỏi thư viện?')) return;
+  
+  REGIMENS = REGIMENS.filter(r => r.id.toString() !== id.toString());
+  localStorage.setItem('chemo_regimens', JSON.stringify(REGIMENS));
+  
+  if (selectedRegimen && selectedRegimen.id.toString() === id.toString()) {
+    selectedRegimen = null;
+    document.getElementById('regimen-preview').classList.add('hidden');
+  }
+  
+  initDataStorage();
+  filterCat(activeCat);
+}
+
+function loadRegimen(){
+  if(!selectedRegimen) return;
+  document.getElementById('regimen-name').value=selectedRegimen.name;
+  const sel=document.getElementById('cycle-days');
+  sel.value=selectedRegimen.cycle;
+  if(![7,14,21,28].includes(selectedRegimen.cycle)){
+    const opt=document.createElement('option');
+    opt.value=selectedRegimen.cycle;opt.textContent=selectedRegimen.cycle+' ngày';
+    sel.appendChild(opt);
+  }
+  sel.value=selectedRegimen.cycle;
+  drugs=selectedRegimen.drugs.map((d,i)=>({...d,id:'drug-'+(++drugCounter)}));
+  renderDrugs();
+  recalc();
+  updateNextDate();
+  showTab('calc');
+}
+
+function calculateEGFR2021(scr_umol, age, sex) {
+  const scr = scr_umol / 88.4;
+  const kappa = (sex === 'female') ? 0.7 : 0.9;
+  const alpha = (sex === 'female') ? -0.241 : -0.302;
+  const ratio = scr / kappa;
+  let result = 142 * Math.pow(Math.min(ratio, 1), alpha) * Math.pow(Math.max(ratio, 1), -1.200) * Math.pow(0.9938, age);
+  if (sex === 'female') result *= 1.012;
+  return result;
+}
+
+function moveDrugOrder(id, direction) {
+  const idx = drugs.findIndex(d => d.id === id);
+  if (idx === -1) return;
+  if (direction === 'up' && idx > 0) {
+    let temp = drugs[idx];
+    drugs[idx] = drugs[idx - 1];
+    drugs[idx - 1] = temp;
+  } else if (direction === 'down' && idx < drugs.length - 1) {
+    let temp = drugs[idx];
+    drugs[idx] = drugs[idx + 1];
+    drugs[idx + 1] = temp;
+  }
+  renderDrugs();
+  recalc();
+}
+
+function recalc(){
+  const wt=parseFloat(document.getElementById('pt-wt').value)||0;
+  const ht=parseFloat(document.getElementById('pt-ht').value)||0;
+  const cr=parseFloat(document.getElementById('pt-cr').value)||0;
+  const age=parseFloat(document.getElementById('pt-age').value)||0;
+  const sex=document.getElementById('pt-sex').value;
+  let bsa=0,egfr=0,bmi=0;
+  if(wt>0&&ht>0){bsa=Math.sqrt((wt*ht)/3600);bmi=wt/((ht/100)**2);}
+  if(cr>0&&age>0){egfr=calculateEGFR2021(cr, age, sex);}
+  document.getElementById('bsa-val').textContent=bsa>0?bsa.toFixed(2):'—';
+  document.getElementById('crcl-val').textContent=egfr>0?Math.round(egfr):'—';
+  document.getElementById('bmi-val').textContent=bmi>0?bmi.toFixed(1):'—';
+  document.getElementById('bsa-warning').style.display=bsa>2?'block':'none';
+  drugs.forEach(d=>calcDrug(d.id));
+}
+
+function calcDrug(id){
+  const d=drugs.find(x=>x.id===id);if(!d)return;
+  const bsa=parseFloat(document.getElementById('bsa-val').textContent)||0;
+  const egfr=parseFloat(document.getElementById('crcl-val').textContent)||0;
+  
+  let theoretical = 0;
+  if(d.doseType==='bsa'&&bsa>0) theoretical=d.dose*bsa;
+  else if(d.doseType==='auc'&&egfr>0) theoretical=d.dose*(egfr+25);
+  else if(d.doseType==='flat') theoretical=d.dose;
+  
+  let finalDose = theoretical;
+  let pctString = '';
+  
+  if(d.maxDose > 0 && theoretical > d.maxDose) {
+    finalDose = d.maxDose; 
+    let pct = (d.maxDose / theoretical * 100).toFixed(1);
+    pctString = `<span style="font-size:11px; font-weight:500; color:#A32D2D; display:block; margin-top:2px;">(Áp liều trần bảo vệ: đạt ${pct}% liều lý thuyết gốc ${theoretical.toFixed(1)} mg)</span>`;
+  } else if(d.maxDose > 0 && theoretical <= d.maxDose && theoretical > 0) {
+    pctString = `<span style="font-size:11px; font-weight:normal; color:#27500A; display:block; margin-top:2px;">(Dưới ngưỡng giới hạn trần: ${d.maxDose} mg)</span>`;
+  }
+  
+  const re=document.getElementById('result-'+id);
+  if(re) {
+    if(finalDose > 0) {
+      re.innerHTML = `<strong>${finalDose.toFixed(1)} mg</strong> ${pctString}`;
+    } else {
+      re.textContent = '—';
+    }
+  }
+  
+  const ce=document.getElementById('conc-'+id);
+  if(ce&&d.volume>0&&finalDose>0) ce.textContent=(finalDose/d.volume).toFixed(2)+' mg/mL';
+}
+
+function addDrug(){
+  drugCounter++;
+  drugs.push({id:'drug-'+drugCounter,name:'',doseType:'bsa',dose:0,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:''});
+  renderDrugs();recalc();
+}
+
+function removeDrug(id){drugs=drugs.filter(d=>d.id!==id);renderDrugs();}
+
+function setDoseType(id,type){
+  const d=drugs.find(x=>x.id===id);if(!d)return;
+  d.doseType=type;
+  d.unit=type==='bsa'?'mg/m²':type==='auc'?'AUC':'mg';
+  renderDrugs();recalc();
+}
+
+function updateDrug(id,field,val){
+  const d=drugs.find(x=>x.id===id);if(!d)return;
+  if(field==='days') d.days=parseDays(val);
+  else if(['dose','volume','infTime','maxDose'].includes(field)) d[field]=parseFloat(val)||0;
+  else d[field]=val;
+  calcDrug(id);
+}
+
+function renderDrugs(){
+  const list=document.getElementById('drug-list');
+  list.innerHTML='';
+  drugs.forEach((d, index)=>{
+    const bmap={'bsa':'BSA','auc':'AUC (Calvert)','flat':'Flat dose'};
+    const bcls={'bsa':'b-bsa','auc':'b-auc','flat':'b-flat'};
+    const div=document.createElement('div');
+    div.className='drug-block';div.id=d.id;
+    div.innerHTML=`
+      <div class="drug-header">
+        <div style="display:inline-flex; gap:2px; margin-right:4px;" class="no-print">
+          <button class="dtb" style="padding:2px 5px; height:26px;" onclick="moveDrugOrder('${d.id}', 'up')" ${index===0?'disabled style="opacity:0.3;"':''} title="Di chuyển lên"><i class="ti ti-arrow-up"></i></button>
+          <button class="dtb" style="padding:2px 5px; height:26px;" onclick="moveDrugOrder('${d.id}', 'down')" ${index===drugs.length-1?'disabled style="opacity:0.3;"':''} title="Di chuyển xuống"><i class="ti ti-arrow-down"></i></button>
+        </div>
+        <input style="flex:1;min-width:130px;height:32px;padding:0 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:14px;font-weight:600"
+          placeholder="Tên hoạt chất" value="${d.name}" oninput="updateDrug('${d.id}','name',this.value)">
+        <span class="badge ${bcls[d.doseType]}">${bmap[d.doseType]}</span>
+        <button class="btn-danger no-print" onclick="removeDrug('${d.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">Loại hình tính liều cơ sở</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="dtb ${d.doseType==='bsa'?'active':''}" onclick="setDoseType('${d.id}','bsa')">BSA (mg/m²)</button>
+          <button class="dtb ${d.doseType==='auc'?'active':''}" onclick="setDoseType('${d.id}','auc')">AUC – Calvert</button>
+          <button class="dtb ${d.doseType==='flat'?'active':''}" onclick="setDoseType('${d.id}','flat')">Flat (Liều cố định)</button>
+        </div>
+      </div>
+      <div class="grid3" style="margin-bottom:10px">
+        <div class="field"><label>${d.doseType==='auc'?'Target AUC':'Mức liều cơ sở ('+d.unit+')'}</label>
+          <input type="number" step="0.1" value="${d.dose||''}" placeholder="0" oninput="updateDrug('${d.id}','dose',this.value);recalc()"></div>
+        <div class="field"><label>Liều trần tối đa bảo vệ (mg)</label>
+          <input type="number" step="1" value="${d.maxDose||''}" placeholder="0" oninput="updateDrug('${d.id}','maxDose',this.value);recalc()"></div>
+        <div class="field"><label>Ngày dùng (Hỗ trợ nhập vd: 1, 2-14)</label>
+          <input type="text" value="${formatDays(d.days)}" oninput="updateDrug('${d.id}','days',this.value)"></div>
+      </div>
+      <div class="grid3" style="margin-bottom:10px">
+        <div class="field"><label>Dung môi hòa tan</label>
+          <select onchange="updateDrug('${d.id}','diluent',this.value)">
+            <option ${d.diluent==='NaCl 0.9%'?'selected':''}>NaCl 0.9%</option>
+            <option ${d.diluent==='Glucose 5%'?'selected':''}>Glucose 5%</option>
+            <option ${d.diluent==='Nước cất'?'selected':''}>Nước cất</option>
+            <option ${d.diluent==='Uống (oral)'?'selected':''}>Uống (oral)</option>
+            <option ${d.diluent==='Không pha loãng'?'selected':''}>Không pha loãng</option>
+          </select></div>
+        <div class="field"><label>Thể tích dung môi (mL)</label>
+          <input type="number" value="${d.volume}" oninput="updateDrug('${d.id}','volume',this.value);recalc()"></div>
+        <div class="field"><label>Thời gian truyền (phút)</label>
+          <input type="number" value="${d.infTime}" oninput="updateDrug('${d.id}','infTime',this.value)"></div>
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Cách dùng / Đường dùng & Hướng dẫn y lệnh lâm sàng</label>
+        <input type="text" value="${d.instruction || ''}" placeholder="Vd: Truyền tĩnh mạch chậm qua bơm tiêm điện; Uống chia 2 lần sau ăn..." oninput="updateDrug('${d.id}','instruction',this.value)">
+      </div>
+      <div class="drug-result">
+        <div class="rc"><div class="rl">Tổng liều y lệnh thực tế</div><div class="rv" id="result-${d.id}">—</div></div>
+        <div class="rc"><div class="rl">Nồng độ sau pha</div><div class="rv" id="conc-${d.id}">—</div></div>
+        <div class="rc"><div class="rl">Tốc độ truyền dịch</div><div class="rv">${d.volume>0&&d.infTime>0?(d.volume/d.infTime*60).toFixed(0)+' mL/h':'—'}</div></div>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function generateSchedule(){
+  const ptId=document.getElementById('pt-id').value.trim()||'—';
+  const ptName=document.getElementById('pt-name').value.trim()||'Bệnh nhân chưa đặt tên';
+  const ptAge=document.getElementById('pt-age').value||'—';
+  const ptSex=document.getElementById('pt-sex').value==='male'?'Nam':'Nữ';
+  const regimen=document.getElementById('regimen-name').value||'Tùy chỉnh lâm sàng';
+  const cycleDays=parseInt(document.getElementById('cycle-days').value);
+  const bsa=document.getElementById('bsa-val').textContent;
+  const egfr=document.getElementById('crcl-val').textContent;
+  const bmi=document.getElementById('bmi-val').textContent;
+  const wt=document.getElementById('pt-wt').value||'—';
+  const ht=document.getElementById('pt-ht').value||'—';
+  const ptDiagnosis=document.getElementById('pt-diagnosis').value.trim()||'';
+  
+  const dateInfDisplay = formatDisplayDate(document.getElementById('pt-date-inf').value);
+  const dateNextDisplay = formatDisplayDate(document.getElementById('pt-date-next').value);
+  const currentCycleNo = document.getElementById('current-cycle-no').value || '—';
+  const plannedCyclesVal = document.getElementById('planned-cycles').value || '—';
+
+  const hospitalName = document.getElementById('admin-hospital').value || 'HỆ THỐNG Y TẾ ĐIỀU TRỊ THỰC THI';
+  const deptName = document.getElementById('admin-dept').value || 'KHOA UNG BƯỚU / ĐƠN VỊ TRUYỀN HÓA CHẤT';
+  const titleName = document.getElementById('admin-title').value || 'PHIẾU Y LỆNH & LỊCH TRUYỀN HÓA CHẤT';
+
+  if(drugs.length===0){alert('Vui lòng thêm ít nhất một thuốc vào danh sách cấu hình.');return;}
+  
+  let maxDay = 0;
+  drugs.forEach(d => {
+    d.days.forEach(day => { if(day > maxDay) maxDay = day; });
+  });
+  
+  let dayProfiles = [];
+  for (let d = 1; d <= maxDay; d++) {
+    let dayDrugs = [];
+    drugs.forEach(drug => {
+      if (drug.days.includes(d)) {
+        let totalDoseText = document.getElementById('result-' + drug.id)?.innerText || '—';
+        let cleanDose = totalDoseText.split('\n')[0].trim(); 
+        const rate = drug.volume > 0 && drug.infTime > 0 ? (drug.volume / drug.infTime * 60).toFixed(0) + ' mL/h' : '—';
+        
+        dayDrugs.push({
+          name: drug.name, totalDose: cleanDose, diluent: drug.diluent, volume: drug.volume, rate: rate, infTime: drug.infTime, instruction: drug.instruction || '—'
+        });
+      }
+    });
+    if(dayDrugs.length > 0) dayProfiles[d] = dayDrugs;
+  }
+  
+  let compressedGroups = [];
+  let currentGroup = null;
+  
+  function isSameProfile(p1, p2) {
+    if (!p1 || !p2) return false;
+    if (p1.length !== p2.length) return false;
+    for (let i = 0; i < p1.length; i++) {
+      if (p1[i].name !== p2[i].name || p1[i].totalDose !== p2[i].totalDose || 
+          p1[i].diluent !== p2[i].diluent || p1[i].volume !== p2[i].volume || 
+          p1[i].rate !== p2[i].rate || p1[i].infTime !== p2[i].infTime ||
+          p1[i].instruction !== p2[i].instruction) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  for (let d = 1; d <= maxDay; d++) {
+    let profile = dayProfiles[d];
+    if (!profile) continue; 
+    
+    if (currentGroup && isSameProfile(currentGroup.profile, profile)) {
+      currentGroup.endDay = d; 
+    } else {
+      if (currentGroup) compressedGroups.push(currentGroup);
+      currentGroup = { startDay: d, endDay: d, profile: profile };
+    }
+  }
+  if (currentGroup) compressedGroups.push(currentGroup);
+  
+  let html = `
+  <div class="print-element" style="margin-bottom:18px; width:100%;">
+    <table style="width:100%; border-collapse:collapse; border-bottom:2.5px solid #000; padding-bottom:6px;">
+      <tr>
+        <td style="vertical-align:top; width:55%; font-family:var(--font-sans);">
+          <div style="font-weight:bold; font-size:13px; text-transform:uppercase; color:#000; line-height:1.4;">${hospitalName}</div>
+          <div style="font-weight:500; font-size:11px; color:#333; margin-top:2px; line-height:1.3;">${deptName}</div>
+        </td>
+        <td style="text-align:right; vertical-align:top; font-family:var(--font-sans);">
+          <div style="font-weight:bold; font-size:15px; color:#000; letter-spacing:0.3px; line-height:1.3;">${titleName}</div>
+          <div style="font-size:12px; font-weight:bold; color:#000; margin-top:4px;">Mã người bệnh: ${ptId}</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background:var(--color-background-secondary); border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); padding:1rem; margin-bottom:1rem;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px; font-size:13px;">
+      <div><strong>Mã người bệnh:</strong> <span style="font-weight:bold;">${ptId}</span></div>
+      <div><strong>Họ tên người bệnh:</strong> ${ptName}</div>
+      <div><strong>Tuổi:</strong> ${ptAge} &nbsp;|&nbsp; <strong>Giới tính:</strong> ${ptSex}</div>
+      ${ptDiagnosis ? `<div style="grid-column:1/-1"><strong>Chẩn đoán:</strong> <span style="color:#A32D2D; font-weight:600;">${ptDiagnosis}</span></div>` : ''}
+      <div><strong>Trọng lượng:</strong> ${wt} kg &nbsp;|&nbsp; <strong>Chiều cao:</strong> ${ht} cm</div>
+      <div><strong>Phác đồ áp dụng:</strong> <span style="font-weight:bold; color:#0C447C;">${regimen}</span></div>
+      <div><strong>Diện tích bề mặt (BSA):</strong> <span style="font-weight:bold;">${bsa} m²</span></div>
+      <div><strong>Chỉ số eGFR (CKD-EPI 2021):</strong> <span style="font-weight:bold;">${egfr} mL/min/1.73m²</span></div>
+      <div><strong>Chỉ số khối BMI:</strong> ${bmi} kg/m²</div>
+      <div><strong>Chu kỳ phác đồ:</strong> ${cycleDays} ngày</div>
+      <div><strong>Chu kỳ hiện tại:</strong> <span style="font-weight:bold; color:#4C1D95;">Chu kỳ ${currentCycleNo}${plannedCyclesVal !== '—' ? ' / ' + plannedCyclesVal : ''}</span></div>
+      <div><strong>Ngày truyền hóa chất:</strong> <span style="font-weight:bold;">${dateInfDisplay}</span></div>
+      <div><strong>Ngày hẹn lịch tiếp theo:</strong> <span style="font-weight:bold; color:#A32D2D;">${dateNextDisplay}</span></div>
+    </div>
+  </div>
+  
+  <table class="sch-table">
+    <thead>
+      <tr>
+        <th style="width:65px; text-align:center;">Ngày dùng</th>
+        <th style="width:160px;">Tên thuốc / Hoạt chất hóa chất</th>
+        <th style="width:115px;">Liều lượng y lệnh</th>
+        <th style="width:100px;">Dung môi pha</th>
+        <th style="width:65px; text-align:center;">Thể tích</th>
+        <th>Cách dùng & Hướng dẫn y lệnh</th>
+        <th style="width:80px; text-align:center;">Tốc độ</th>
+        <th style="width:75px; text-align:center;">Thời gian</th>
+        <th class="print-element" style="width:90px; text-align:center;">ĐD ký</th>
+      </tr>
+    </thead>
+    <tbody>`;
+    
+  compressedGroups.forEach(g => {
+    const dayText = g.startDay === g.endDay ? `D${g.startDay}` : `D${g.startDay}-${g.endDay}`;
+    g.profile.forEach((d, i) => {
+      html += `
+      <tr style="background:#fff; color:#000;">
+        ${i === 0 ? `<td rowspan="${g.profile.length}" style="text-align:center; vertical-align:middle; font-weight:bold; background:#f9fafb;"><span class="tag-day">${dayText}</span></td>` : ''}
+        <td style="font-weight:600; padding:8px;">${d.name || '(Chưa nhập tên thuốc)'}</td>
+        <td style="font-weight:bold; color:#0C447C; padding:8px; font-size:13px;">${d.totalDose}</td>
+        <td>${d.diluent}</td>
+        <td style="text-align:center;">${d.volume > 0 ? d.volume + ' mL' : '—'}</td>
+        <td style="font-size:12px; font-style:italic; padding:6px; color:#111;">${d.instruction}</td>
+        <td style="text-align:center; font-family:var(--font-sans); font-weight:bold;">${d.rate}</td>
+        <td style="text-align:center;">${d.infTime >= 60 ? (d.infTime / 60).toFixed(1) + 'h' : d.infTime > 0 ? d.infTime + ' ph' : '—'}</td>
+        <td class="print-element" style="border:1px solid #000;"></td>
+      </tr>`;
+    });
+  });
+  
+  html += `
+    </tbody>
+  </table>
+  
+  <div class="print-element" style="margin-top:35px; width:100%;">
+    <table style="width:100%; border:none;">
+      <tr>
+        <td style="width:50%; text-align:center; vertical-align:top; font-size:12px; font-family:var(--font-sans);">
+          <p style="font-style:italic; margin-bottom:4px;">Người lập bảng theo dõi dịch truyền</p>
+          <p style="font-weight:bold; margin-bottom:55px; text-transform:uppercase;">ĐIỀU DƯỠNG LÂM SÀNG</p>
+          <p style="color:#bbb;">(Ký và ghi rõ họ tên)</p>
+        </td>
+        <td style="text-align:center; vertical-align:top; font-size:12px; font-family:var(--font-sans);">
+          <p style="font-style:italic; margin-bottom:4px;">Ngày .... tháng .... năm 20...</p>
+          <p style="font-weight:bold; margin-bottom:55px; text-transform:uppercase;">BÁC SĨ RA Y LỆNH ĐIỀU TRỊ</p>
+          <p style="color:#bbb;">(Ký, duyệt liều và ghi rõ họ tên)</p>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <div class="warn no-print" style="margin-top:1rem;">
+    <i class="ti ti-alert-circle"></i> Bảng tổng hợp lịch truyền hỗ trợ quy trình ra y lệnh. Hãy đối chiếu kỹ nồng độ sau pha và thể trạng thực tế của người bệnh trước khi ký phê duyệt lâm sàng.
+  </div>`;
+  
+  document.getElementById('schedule-content').innerHTML = html;
+  showTab('schedule');
+}
+
+function exportToWord() {
+  const content = document.getElementById('schedule-content').innerHTML;
+  const ptName = document.getElementById('pt-name').value.trim() || 'Benh_Nhan';
+  
+  const htmlDoc = `
+  <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+  <head>
+    <meta charset="utf-8">
+    <title>Y Lệnh Lâm Sàng</title>
+    <style>
+      body { font-family: "Arial", sans-serif; font-size: 11pt; line-height: 1.3; color: #000000; }
+      table { width: 100%; border-collapse: collapse; margin-top: 12px; margin-bottom: 12px; }
+      th, td { border: 1px solid #000000; padding: 6px 8px; font-size: 10.5pt; text-align: left; vertical-align: middle; }
+      th { background-color: #f3f4f6; font-weight: bold; }
+      .tag-day { font-weight: bold; color: #000000; }
+      .print-element { display: block !important; }
+      .no-print { display: none !important; }
+    </style>
+  </head>
+  <body>
+    ${content}
+  </body>
+  </html>`;
+  
+  const blob = new Blob(['\ufeff' + htmlDoc], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Y_Lenh_Chemo_${ptName.replace(/\s+/g, '_')}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function saveRecord(){
+  const ptId=document.getElementById('pt-id').value.trim()||'';
+  const ptName=document.getElementById('pt-name').value.trim()||'Không tên';
+  const ptAge=document.getElementById('pt-age').value||'';
+  const ptSex=document.getElementById('pt-sex').value;
+  const ptWt=document.getElementById('pt-wt').value||'';
+  const ptHt=document.getElementById('pt-ht').value||'';
+  const ptCr=document.getElementById('pt-cr').value||'';
+  const ptDiagnosis=document.getElementById('pt-diagnosis').value.trim()||'';
+  const dateInf=document.getElementById('pt-date-inf').value||'';
+  const dateNext=document.getElementById('pt-date-next').value||'';
+  const regimen=document.getElementById('regimen-name').value||'—';
+  const bsa=document.getElementById('bsa-val').textContent;
+  const egfr=document.getElementById('crcl-val').textContent;
+  const cycleDays=parseInt(document.getElementById('cycle-days').value)||21;
+  const ts=new Date().toLocaleString('vi-VN');
+
+  // Cycle info
+  const currentCycleNo = parseInt(document.getElementById('current-cycle-no').value)||1;
+  const plannedCycles = parseInt(document.getElementById('planned-cycles').value)||0;
+  const doseReductionEl = document.getElementById('dose-reduction-pct');
+  const doseReductionPct = doseReductionEl.value === 'custom' ? 100 : (parseFloat(doseReductionEl.value)||100);
+
+  // Snapshot drug doses — deep copy to avoid reference issues
+  const drugSnapshot = drugs.map(d => {
+    const resultEl = document.getElementById('result-' + d.id);
+    const doseText = resultEl ? resultEl.innerText.split('\n')[0].trim() : '—';
+    const doseVal = parseFloat(doseText) || 0;
+    return {
+      name: d.name,
+      doseType: d.doseType,
+      baseDose: d.dose,
+      unit: d.unit,
+      calculatedDose: doseVal,
+      maxDose: d.maxDose,
+      volume: d.volume,
+      infTime: d.infTime,
+      days: Array.isArray(d.days) ? [...d.days] : [1],
+      diluent: d.diluent,
+      instruction: d.instruction || ''
+    };
+  });
+
+  // Deep copy of drugs array to avoid circular/reference serialization issues
+  const drugsCopy = drugs.map(d => ({
+    id: d.id,
+    name: d.name,
+    doseType: d.doseType,
+    dose: d.dose,
+    unit: d.unit,
+    diluent: d.diluent,
+    volume: d.volume,
+    infTime: d.infTime,
+    days: Array.isArray(d.days) ? [...d.days] : [1],
+    maxDose: d.maxDose,
+    instruction: d.instruction || ''
+  }));
+  
+  try {
+    const savedRecords = JSON.parse(localStorage.getItem('chemo_records')) || [];
+    savedRecords.unshift({
+      ptId, ptName, ptAge, ptSex, ptWt, ptHt, ptCr, ptDiagnosis,
+      dateInf, dateNext, regimen, bsa, egfr, cycleDays,
+      currentCycleNo, plannedCycles, doseReductionPct,
+      drugSnapshot, ts,
+      drugs: drugsCopy
+    });
+    localStorage.setItem('chemo_records', JSON.stringify(savedRecords));
+    renderHistory();
+    showTab('history');
+    alert('Đã lưu trữ hồ sơ bệnh nhân thành công!');
+  } catch(err) {
+    alert('Lỗi lưu hồ sơ: ' + err.message + '\nVui lòng thử lại hoặc kiểm tra dung lượng localStorage.');
+  }
+}
+
+function saveAsTemplate() {
+  const name = document.getElementById('regimen-name').value.trim();
+  const cycleDays = parseInt(document.getElementById('cycle-days').value) || 21;
+  if (!name) { alert('Vui lòng nhập tên phác đồ tại tab Tính liều trước khi xuất cấu trúc mẫu!'); return; }
+  if (drugs.length === 0) { alert('Cấu hình hiện hành trống, không thể xuất phác đồ mẫu!'); return; }
+
+  const cat = prompt('Nhập danh mục/nhóm bệnh cho phác đồ mẫu này (Vd: Đại trực tàng, Ung thư vú):', 'Cá nhân') || 'Cá nhân';
+
+  const newRegimen = {
+    id: 'custom-' + Date.now(),
+    name: name,
+    cat: cat,
+    cycle: cycleDays,
+    indication: 'Phác đồ kết xuất từ bộ tính liều lâm sàng hiện hành',
+    drugs: drugs.map(d => ({
+      name: d.name, doseType: d.doseType, dose: d.dose, unit: d.unit, diluent: d.diluent, volume: d.volume, infTime: d.infTime, days: [...d.days], maxDose: d.maxDose, instruction: d.instruction || ''
+    }))
+  };
+
+  REGIMENS.unshift(newRegimen);
+  localStorage.setItem('chemo_regimens', JSON.stringify(REGIMENS));
+  
+  initDataStorage();
+  filterCat(null);
+  alert(`Đã xuất cấu trúc phác đồ "${name}" vào thư viện mẫu cá nhân thành công!`);
+}
+
+function calcDI(patientRecords) {
+  // Returns dose intensity metrics per patient record set (sorted ascending by date)
+  // RDI = (received total dose / planned total dose) * 100
+  // DI per drug = mg/m²/week = dose / (BSA_used * weeks_of_cycle)
+  // We use doseReductionPct as a proxy for RDI per cycle
+  let rdiHistory = patientRecords.map(r => ({
+    cycle: r.calculatedCycle,
+    dateInf: r.dateInf,
+    rdi: r.doseReductionPct != null ? r.doseReductionPct : 100,
+    cycleDays: r.cycleDays || 21,
+    bsa: parseFloat(r.bsa) || 0,
+    drugSnapshot: r.drugSnapshot || [],
+    regimen: r.regimen
+  }));
+  
+  // Overall average RDI across all cycles
+  const avgRDI = rdiHistory.length > 0 
+    ? (rdiHistory.reduce((s,x) => s + x.rdi, 0) / rdiHistory.length).toFixed(1)
+    : null;
+  
+  return { rdiHistory, avgRDI };
+}
+
+function getDITagHTML(rdi) {
+  const v = parseFloat(rdi);
+  if (v >= 85) return `<span class="di-tag di-ok">RDI ${v}% ✓</span>`;
+  if (v >= 65) return `<span class="di-tag di-warn">RDI ${v}% ⚠</span>`;
+  return `<span class="di-tag di-low">RDI ${v}% ✗</span>`;
+}
+
+function getDIBarHTML(rdi) {
+  const v = Math.min(100, parseFloat(rdi));
+  const color = v >= 85 ? '#10B981' : v >= 65 ? '#F59E0B' : '#EF4444';
+  return `<div class="di-bar-wrap"><div class="di-bar" style="width:${v}%;background:${color};"></div></div>`;
+}
+
+function renderHistory(){
+  const el=document.getElementById('history-content');
+  const savedRecords = JSON.parse(localStorage.getItem('chemo_records')) || [];
+  if(savedRecords.length===0){el.innerHTML='<p style="color:var(--color-text-secondary);font-size:14px">Chưa có hồ sơ bệnh nhân nào được lưu trữ.</p>';return;}
+  
+  const query = document.getElementById('search-history')?.value.trim().toLowerCase() || '';
+  
+  let indexedRecords = savedRecords.map((r, idx) => ({ ...r, originalIndex: idx }));
+  indexedRecords.sort((a, b) => {
+    if (a.dateInf !== b.dateInf) return a.dateInf.localeCompare(b.dateInf);
+    return a.ts.localeCompare(b.ts);
+  });
+  
+  let cycleCounters = {};
+  indexedRecords.forEach(r => {
+    let pKey = (r.ptId && r.ptId.trim() !== '') ? r.ptId.trim().toLowerCase() : r.ptName.trim().toLowerCase();
+    if (!cycleCounters[pKey]) cycleCounters[pKey] = 0;
+    cycleCounters[pKey]++;
+    r.calculatedCycle = cycleCounters[pKey];
+  });
+  
+  let integratedPatients = {};
+  indexedRecords.forEach(r => {
+    let pKey = (r.ptId && r.ptId.trim() !== '') ? r.ptId.trim() : r.ptName.trim();
+    if (!integratedPatients[pKey]) {
+      integratedPatients[pKey] = { ptId: r.ptId, ptName: r.ptName, ptAge: r.ptAge, ptSex: r.ptSex, ptDiagnosis: r.ptDiagnosis||'', records: [] };
+    }
+    integratedPatients[pKey].records.push(r);
+  });
+  
+  let patientKeys = Object.keys(integratedPatients);
+  let filteredKeys = patientKeys.filter(key => {
+    let p = integratedPatients[key];
+    return p.ptName.toLowerCase().includes(query) || (p.ptId && p.ptId.toLowerCase().includes(query)) || (p.ptDiagnosis && p.ptDiagnosis.toLowerCase().includes(query));
+  });
+  
+  if(filteredKeys.length===0){el.innerHTML='<p style="color:var(--color-text-secondary);font-size:14px">Không tìm thấy hồ sơ người bệnh nào trùng khớp.</p>';return;}
+  
+  el.innerHTML = filteredKeys.map((key, keyIdx) => {
+    let p = integratedPatients[key];
+    let ascRecords = [...p.records].sort((a,b) => a.dateInf.localeCompare(b.dateInf));
+    let { rdiHistory, avgRDI } = calcDI(ascRecords);
+    
+    let totalCycles = p.records.length;
+    let latestRecord = ascRecords[ascRecords.length - 1];
+    let plannedCycles = latestRecord.plannedCycles || 0;
+    const cardId = 'ptcard-' + keyIdx;
+
+    // Unique regimens used
+    let regimenSet = [...new Set(ascRecords.map(r => r.regimen))];
+    let regimenTags = regimenSet.map(rn => `<span style="display:inline-block;background:#E6F1FB;color:#0C447C;font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;margin-right:4px;">${rn}</span>`).join('');
+
+    p.records.sort((a,b) => b.ts.localeCompare(a.ts));
+
+    // === DI Summary Panel ===
+    let avgRDIVal = parseFloat(avgRDI);
+    let diSummaryHtml = '';
+    if (rdiHistory.length > 0) {
+      let completedPct = plannedCycles > 0 ? ((totalCycles / plannedCycles) * 100).toFixed(0) : null;
+      diSummaryHtml = `
+      <div style="background:#F5F3FF; border:0.5px solid #C4B5FD; border-radius:var(--border-radius-md); padding:12px; margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:700; color:#4C1D95; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;"><i class="ti ti-chart-line"></i> Cường độ liều (Dose Intensity) &amp; Tiến độ điều trị</div>
+        <div class="di-summary-grid">
+          <div class="rc">
+            <div class="rl">Chu kỳ đã hoàn thành</div>
+            <div class="rv" style="font-size:18px;">${totalCycles} ${plannedCycles>0?'/ '+plannedCycles+' CK':''}</div>
+            ${plannedCycles>0?`<div style="font-size:11px; color:var(--color-text-secondary); margin-top:2px;">Tiến độ: ${completedPct}%</div>`:''}
+          </div>
+          <div class="rc">
+            <div class="rl">RDI Trung bình tích lũy</div>
+            <div class="rv" style="font-size:18px;">${avgRDI}%</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">${getDIBarHTML(avgRDI)} ${getDITagHTML(avgRDI)}</div>
+          </div>
+          <div class="rc">
+            <div class="rl">Giải thích RDI lâm sàng</div>
+            <div class="rv" style="font-size:11px; font-weight:500; line-height:1.5; color:${avgRDIVal>=85?'#065F46':avgRDIVal>=65?'#92400E':'#991B1B'}">
+              ${avgRDIVal>=85?'Đạt cường độ liều tối ưu — Hiệu quả điều trị tốt (≥85%)':avgRDIVal>=65?'Cường độ liều trung bình — Theo dõi sát hơn (65–84%)':'Cường độ liều thấp — Nguy cơ giảm hiệu quả (<65%)'}
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px; overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:420px;">
+            <thead><tr style="background:#EDE9FE;">
+              <th style="padding:5px 8px; text-align:left; color:#4C1D95; font-weight:600; border:0.5px solid #DDD6FE;">Chu kỳ</th>
+              <th style="padding:5px 8px; text-align:left; color:#4C1D95; font-weight:600; border:0.5px solid #DDD6FE;">Ngày truyền</th>
+              <th style="padding:5px 8px; text-align:left; color:#4C1D95; font-weight:600; border:0.5px solid #DDD6FE;">Phác đồ</th>
+              <th style="padding:5px 8px; text-align:center; color:#4C1D95; font-weight:600; border:0.5px solid #DDD6FE;">RDI chu kỳ</th>
+              <th style="padding:5px 8px; text-align:left; color:#4C1D95; font-weight:600; border:0.5px solid #DDD6FE;">Cường độ liều</th>
+            </tr></thead>
+            <tbody>
+              ${rdiHistory.map(x => `
+              <tr style="border-bottom:0.5px solid #EDE9FE;">
+                <td style="padding:5px 8px; border:0.5px solid #EDE9FE;"><span class="cycle-badge">CK ${x.cycle}</span></td>
+                <td style="padding:5px 8px; border:0.5px solid #EDE9FE;">${formatDisplayDate(x.dateInf)}</td>
+                <td style="padding:5px 8px; border:0.5px solid #EDE9FE; font-weight:500; color:#0C447C;">${x.regimen}</td>
+                <td style="padding:5px 8px; border:0.5px solid #EDE9FE; text-align:center;">${getDITagHTML(x.rdi)}</td>
+                <td style="padding:5px 8px; border:0.5px solid #EDE9FE;">${getDIBarHTML(x.rdi)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:10px; color:#7C3AED; margin-top:6px; font-style:italic;">
+          * RDI (Relative Dose Intensity) = Tỷ lệ liều thực tế / liều kế hoạch chuẩn. RDI ≥85% được khuyến cáo duy trì để đảm bảo hiệu quả hóa trị (Hryniuk &amp; Bush, JCO 1984; Lyman, Oncology 2009).
+        </div>
+      </div>`;
+    }
+
+    // === Timeline per cycle ===
+    let timelineHtml = p.records.map((r, rowIdx) => {
+      let isLast = rowIdx === p.records.length - 1;
+      let drugTableHtml = '';
+      if (r.drugSnapshot && r.drugSnapshot.length > 0) {
+        drugTableHtml = `
+        <div style="margin-top:8px; overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:11px; min-width:360px;">
+            <thead><tr style="background:#f9fafb;">
+              <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:left; color:var(--color-text-secondary);">Hoạt chất</th>
+              <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; color:var(--color-text-secondary);">Liều tính</th>
+              <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; color:var(--color-text-secondary);">Ngày dùng</th>
+              <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; color:var(--color-text-secondary);">Tốc độ</th>
+            </tr></thead>
+            <tbody>
+              ${r.drugSnapshot.map(ds => {
+                const rate = ds.volume > 0 && ds.infTime > 0 ? (ds.volume/ds.infTime*60).toFixed(0)+' mL/h' : '—';
+                const daysArr = Array.isArray(ds.days) ? ds.days : [1];
+                return `<tr>
+                  <td style="padding:4px 6px; border:0.5px solid #e5e7eb; font-weight:600;">${ds.name}</td>
+                  <td style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; font-weight:bold; color:#0C447C;">${ds.calculatedDose > 0 ? ds.calculatedDose.toFixed(1)+' mg' : '—'}</td>
+                  <td style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center;"><span class="tag-day">D${formatDays(daysArr)}</span></td>
+                  <td style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center;">${rate}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      }
+
+      let rdiVal = r.doseReductionPct != null ? r.doseReductionPct : 100;
+      
+      return `
+      <div class="timeline-row">
+        <div class="tl-dot">
+          <div class="tl-dot-circle"></div>
+          ${!isLast ? '<div class="tl-dot-line"></div>' : ''}
+        </div>
+        <div class="tl-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+            <div>
+              <span class="cycle-badge">Chu kỳ ${r.calculatedCycle}${r.plannedCycles>0?' / '+r.plannedCycles:''}</span>
+              <strong style="margin-left:6px; color:var(--color-text-primary); font-size:13px;">${r.regimen}</strong>
+              ${getDITagHTML(rdiVal)}
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-sec" style="height:28px; font-size:11px; padding:0 8px;" onclick="toggleCycleDetail('cd-${r.originalIndex}')"><i class="ti ti-list-details"></i> Chi tiết liều</button>
+              <button class="btn-sec" style="height:28px; font-size:11px; padding:0 8px;" onclick="loadRecord(${r.originalIndex})"><i class="ti ti-folder-open"></i> Nạp</button>
+              <button class="btn-danger" style="height:28px; font-size:11px;" onclick="deleteRecord(${r.originalIndex})">Xóa</button>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--color-text-secondary); margin-top:6px; line-height:1.6;">
+            Ngày truyền: <strong>${formatDisplayDate(r.dateInf)}</strong> · Hẹn tiếp: <span style="color:#A32D2D; font-weight:500;">${formatDisplayDate(r.dateNext)}</span>
+            · Chu kỳ: ${r.cycleDays||21} ngày
+            · BSA: ${r.bsa||'—'} m² · eGFR: ${r.egfr||'—'} mL/min/1.73m²
+            <br>CN: ${r.ptWt||'—'} kg · CC: ${r.ptHt||'—'} cm
+            <span style="font-size:10px; color:#9ca3af; margin-left:8px;">Lưu lúc: ${r.ts}</span>
+          </div>
+          <div id="cd-${r.originalIndex}" class="hidden">${drugTableHtml}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `
+    <div style="background: var(--color-background-secondary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 14px; margin-bottom: 10px;">
+      
+      <!-- COLLAPSED HEADER — luôn hiển thị -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; cursor:pointer;" onclick="togglePatientCard('${cardId}')">
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:15px; font-weight:700; color:var(--color-text-primary);">${p.ptName}</span>
+            ${p.ptId ? `<span style="color:#0C447C; font-size:12px; font-weight:bold;">[${p.ptId}]</span>` : ''}
+            <span style="font-size:12px; color:var(--color-text-secondary);">${p.ptSex === 'male' ? 'Nam' : 'Nữ'} · ${p.ptAge||'—'} tuổi</span>
+            <span class="cycle-badge" style="background:#E6F1FB; color:#0C447C;">${totalCycles} chu kỳ${plannedCycles>0?' / '+plannedCycles+' KH':''}</span>
+            ${getDITagHTML(avgRDI||100)}
+          </div>
+          ${p.ptDiagnosis ? `<div style="font-size:12px; color:#A32D2D; font-weight:500; margin-top:4px;"><i class="ti ti-stethoscope" style="font-size:11px;"></i> ${p.ptDiagnosis}</div>` : ''}
+          <div style="margin-top:5px;">${regimenTags}</div>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
+          <button class="btn-sec" style="height:30px; font-size:12px; background:#fff;" onclick="event.stopPropagation(); exportPatientExcel('${key.replace(/'/g, "\\'")}')"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+          <button class="btn-sec" id="toggle-btn-${cardId}" style="height:30px; font-size:12px; background:#fff; min-width:100px;">
+            <i class="ti ti-chevron-down" id="toggle-icon-${cardId}"></i> Mở rộng
+          </button>
+        </div>
+      </div>
+
+      <!-- EXPANDED DETAIL — ẩn mặc định -->
+      <div id="${cardId}" class="hidden" style="margin-top:12px; border-top:1px solid var(--color-border-secondary); padding-top:12px;">
+        ${diSummaryHtml}
+        <div style="font-size:11px; font-weight:600; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;"><i class="ti ti-timeline"></i> Timeline các chu kỳ truyền</div>
+        ${timelineHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function togglePatientCard(cardId) {
+  const panel = document.getElementById(cardId);
+  const icon = document.getElementById('toggle-icon-' + cardId);
+  const btn = document.getElementById('toggle-btn-' + cardId);
+  if (!panel) return;
+  const isHidden = panel.classList.toggle('hidden');
+  if (icon) {
+    icon.className = isHidden ? 'ti ti-chevron-down' : 'ti ti-chevron-up';
+  }
+  if (btn) {
+    btn.innerHTML = isHidden
+      ? '<i class="ti ti-chevron-down"></i> Mở rộng'
+      : '<i class="ti ti-chevron-up"></i> Thu gọn';
+  }
+}
+
+function loadRecord(i){
+  const savedRecords = JSON.parse(localStorage.getItem('chemo_records')) || [];
+  const r=savedRecords[i];
+  document.getElementById('pt-id').value=r.ptId||'';
+  document.getElementById('pt-name').value=r.ptName||'';
+  document.getElementById('pt-age').value=r.ptAge||'';
+  document.getElementById('pt-sex').value=r.ptSex||'male';
+  document.getElementById('pt-wt').value=r.ptWt||'';
+  document.getElementById('pt-ht').value=r.ptHt||'';
+  document.getElementById('pt-cr').value=r.ptCr||'';
+  document.getElementById('pt-diagnosis').value=r.ptDiagnosis||'';
+  
+  if(r.dateInf) document.getElementById('pt-date-inf').value=r.dateInf;
+  if(r.dateNext) document.getElementById('pt-date-next').value=r.dateNext;
+  
+  document.getElementById('regimen-name').value=r.regimen||'';
+  if(r.cycleDays) document.getElementById('cycle-days').value=r.cycleDays;
+
+  // Restore cycle metadata
+  if(r.currentCycleNo) document.getElementById('current-cycle-no').value=r.currentCycleNo;
+  if(r.plannedCycles) document.getElementById('planned-cycles').value=r.plannedCycles;
+  const drEl = document.getElementById('dose-reduction-pct');
+  if(r.doseReductionPct != null) {
+    const opts = Array.from(drEl.options).map(o => o.value);
+    if(opts.includes(String(r.doseReductionPct))) drEl.value=String(r.doseReductionPct);
+    else { drEl.value='custom'; }
+  }
+
+  drugs=r.drugs.map(d=>({...d}));
+  drugCounter=drugs.length;
+  renderDrugs();recalc();showTab('calc');
+}
+
+function deleteRecord(i) {
+  if(!confirm('Xóa vĩnh viễn hồ sơ bệnh nhân này?')) return;
+  const savedRecords = JSON.parse(localStorage.getItem('chemo_records')) || [];
+  savedRecords.splice(i, 1);
+  localStorage.setItem('chemo_records', JSON.stringify(savedRecords));
+  renderHistory();
+}
+
+/* =========================================================
+   CHỨC NĂNG XUẤT EXCEL HỒ SƠ TÍCH HỢP & CHU KỲ LÂM SÀNG
+   ========================================================= */
+
+function exportHistoryToExcel() {
+  const savedRecords = JSON.parse(localStorage.getItem('chemo_records')) || [];
+  if(savedRecords.length === 0) { alert('Chưa có hồ sơ bệnh nhân nào được lưu trữ để xuất Excel.'); return; }
+  
+  let indexedRecords = savedRecords.map((r, idx) => ({ ...r, originalIndex: idx }));
+  indexedRecords.sort((a, b) => {
+    if (a.dateInf !== b.dateInf) return a.dateInf.localeCompare(b.dateInf);
+    return a.ts.localeCompare(b.ts);
+  });
+  
+  let cycleCounters = {};
+  indexedRecords.forEach(r => {
+    let pKey = (r.ptId && r.ptId.trim() !== '') ? r.ptId.trim().toLowerCase() : r.ptName.trim().toLowerCase();
+    if (!cycleCounters[pKey]) cycleCounters[pKey] = 0;
+    cycleCounters[pKey]++;
+    r.calculatedCycle = cycleCounters[pKey];
+  });
+  
+  indexedRecords.sort((a, b) => b.ts.localeCompare(a.ts));
+  
+  let tableHtml = `
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="utf-8">
+  <style>
+    table { border-collapse: collapse; }
+    th, td { border: 0.5px solid #000000; padding: 6px; text-align: left; font-family: Arial, sans-serif; font-size: 10pt; }
+    th { background-color: #f3f4f6; font-weight: bold; }
+  </style>
+  </head>
+  <body>
+    <h2>DANH SÁCH TỔNG HỢP HỒ SƠ LỊCH SỬ BỆNH NHÂN TÍCH HỢP</h2>
+    <p>Thời gian xuất báo cáo: ${new Date().toLocaleString('vi-VN')}</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Mã BN (ID)</th>
+          <th>Họ tên bệnh nhân</th>
+          <th>Tuổi</th>
+          <th>Giới tính</th>
+          <th>Cân nặng (kg)</th>
+          <th>Chiều cao (cm)</th>
+          <th>BSA (m²)</th>
+          <th>Phác đồ điều trị</th>
+          <th>Chu kỳ lâm sàng</th>
+          <th>Ngày truyền</th>
+          <th>Ngày hẹn tiếp theo</th>
+          <th>Thời gian hệ thống ghi nhận</th>
+        </tr>
+      </thead>
+      <tbody>`;
+  
+  indexedRecords.forEach(r => {
+    tableHtml += `
+      <tr>
+        <td>${r.ptId || '—'}</td>
+        <td>${r.ptName}</td>
+        <td>${r.ptAge || '—'}</td>
+        <td>${r.ptSex === 'male' ? 'Nam' : 'Nữ'}</td>
+        <td>${r.ptWt || '—'}</td>
+        <td>${r.ptHt || '—'}</td>
+        <td>${r.bsa || '—'}</td>
+        <td>${r.regimen}</td>
+        <td style="text-align: center; font-weight: bold; color: #0C447C;">Chu kỳ ${r.calculatedCycle}</td>
+        <td>${formatDisplayDate(r.dateInf)}</td>
+        <td>${formatDisplayDate(r.dateNext)}</td>
+        <td>${r.ts}</td>
+      </tr>`;
+  });
+  
+  tableHtml += `</tbody></table></body></html>`;
+  
+  const blob = new Blob(['\ufeff' + tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Bao_Cao_Lich_Su_Benh_Nhan_Tich_Hop_${new Date().toISOString().split('T')[0]}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function exportPatientExcel(key) {
+  const savedRecords = JSON.parse(localStorage.getItem('chemo_records')) || [];
+  let indexedRecords = savedRecords.map((r, idx) => ({ ...r, originalIndex: idx }));
+  
+  indexedRecords.sort((a, b) => {
+    if (a.dateInf !== b.dateInf) return a.dateInf.localeCompare(b.dateInf);
+    return a.ts.localeCompare(b.ts);
+  });
+  
+  let cycleCounters = {};
+  indexedRecords.forEach(r => {
+    let pKey = (r.ptId && r.ptId.trim() !== '') ? r.ptId.trim().toLowerCase() : r.ptName.trim().toLowerCase();
+    if (!cycleCounters[pKey]) cycleCounters[pKey] = 0;
+    cycleCounters[pKey]++;
+    r.calculatedCycle = cycleCounters[pKey];
+  });
+  
+  let patientRecords = indexedRecords.filter(r => {
+    let pKey = (r.ptId && r.ptId.trim() !== '') ? r.ptId.trim() : r.ptName.trim();
+    return pKey === key;
+  });
+  
+  if (patientRecords.length === 0) return;
+  patientRecords.sort((a, b) => a.dateInf.localeCompare(b.dateInf));
+  
+  let first = patientRecords[0];
+  
+  let tableHtml = `
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="utf-8">
+  <style>
+    table { border-collapse: collapse; }
+    th, td { border: 0.5px solid #000000; padding: 6px; text-align: left; font-family: Arial, sans-serif; font-size: 10pt; }
+    th { background-color: #f3f4f6; font-weight: bold; }
+  </style>
+  </head>
+  <body>
+    <h2>HỒ SƠ TIẾN TRÌNH ĐIỀU TRỊ TÍCH HỢP (TIMELINE LOG)</h2>
+    <p><strong>Họ tên bệnh nhân:</strong> ${first.ptName} ${first.ptId ? `[ID: ${first.ptId}]` : ''}</p>
+    <p><strong>Giới tính:</strong> ${first.ptSex === 'male' ? 'Nam' : 'Nữ'} &nbsp;|&nbsp; <strong>Tuổi:</strong> ${first.ptAge || '—'}</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Chu kỳ lâm sàng</th>
+          <th>Phác đồ áp dụng</th>
+          <th>Ngày truyền hóa chất</th>
+          <th>Ngày hẹn tiếp theo</th>
+          <th>Cân nặng (kg)</th>
+          <th>Chiều cao (cm)</th>
+          <th>BSA (m²)</th>
+          <th>eGFR (mL/min/1.73m²)</th>
+          <th>RDI chu kỳ (%)</th>
+          <th>Thời gian hệ thống ghi nhận</th>
+        </tr>
+      </thead>
+      <tbody>`;
+  
+  patientRecords.forEach(r => {
+    tableHtml += `
+      <tr>
+        <td style="text-align: center; font-weight: bold;">Chu kỳ ${r.calculatedCycle}</td>
+        <td style="font-weight: bold; color: #0C447C;">${r.regimen}</td>
+        <td>${formatDisplayDate(r.dateInf)}</td>
+        <td>${formatDisplayDate(r.dateNext)}</td>
+        <td>${r.ptWt || '—'}</td>
+        <td>${r.ptHt || '—'}</td>
+        <td>${r.bsa || '—'}</td>
+        <td>${r.egfr || '—'}</td>
+        <td style="text-align:center; font-weight:bold;">${r.doseReductionPct != null ? r.doseReductionPct + '%' : '100%'}</td>
+        <td>${r.ts}</td>
+      </tr>`;
+  });
+  
+  tableHtml += `</tbody></table></body></html>`;
+  
+  const blob = new Blob(['\ufeff' + tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const filename = `Ho_So_Tich_Hop_${first.ptName.replace(/\s+/g, '_')}.xls`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/* ==========================================
+   CHỨC NĂNG XUẤT/NHẬP CHỌN LỌC NÂNG CAO (V4.5)
+   ========================================== */
+
+function exportSystemDataAdvanced() {
+  const exportRegimens = document.getElementById('exp-cb-regimens').checked;
+  const exportRecords = document.getElementById('exp-cb-records').checked;
+
+  if (!exportRegimens && !exportRecords) {
+    alert("Vui lòng tích chọn ít nhất một danh mục dữ liệu để xuất tệp!");
+    return;
+  }
+
+  try {
+    const backupPackage = {
+      appSignature: "ChemoDoseCalculator_Backup_V4.5",
+      exportTimestamp: new Date().toLocaleString('vi-VN'),
+      dataTypeIncluded: { regimens: exportRegimens, records: exportRecords }
+    };
+
+    if (exportRegimens) {
+      const regimens = localStorage.getItem('chemo_regimens') || '[]';
+      backupPackage.chemo_regimens = JSON.parse(regimens);
+    }
+    if (exportRecords) {
+      const records = localStorage.getItem('chemo_records') || '[]';
+      backupPackage.chemo_records = JSON.parse(records);
+    }
+
+    const blob = new Blob([JSON.stringify(backupPackage, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    const d = new Date();
+    const dateString = `${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getDate().toString().padStart(2,'0')}`;
+    let filenameSuffix = (exportRegimens && exportRecords) ? "ALL" : exportRegimens ? "RegimensOnly" : "RecordsOnly";
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ChemoTool_Backup_${filenameSuffix}_${dateString}.json`;
+    document.body.appendChild(a);
+    a.click();
+    
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert("Lỗi xuất gói dữ liệu: " + err.message);
+  }
+}
+
+function analyzeImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsedData = JSON.parse(e.target.result);
+      
+      if (!parsedData.chemo_regimens && !parsedData.chemo_records) {
+        alert("File không hợp lệ hoặc không chứa dữ liệu cấu trúc phác đồ/bệnh nhân mẫu chuẩn.");
+        document.getElementById('import-analysis-block').classList.add('hidden');
+        event.target.value = '';
+        return;
+      }
+
+      globalParsedImportData = parsedData;
+
+      let countRegimens = Array.isArray(parsedData.chemo_regimens) ? parsedData.chemo_regimens.length : 0;
+      let countRecords = Array.isArray(parsedData.chemo_records) ? parsedData.chemo_records.length : 0;
+      let timestamp = parsedData.exportTimestamp || "Không xác định";
+
+      let analysisHtml = `
+        <strong>Phân tích File thành công:</strong><br>
+        • Thời gian khởi tạo file: <i>${timestamp}</i><br>
+        • Số lượng phác đồ mẫu tìm thấy: <strong>${countRegimens}</strong><br>
+        • Số lượng hồ sơ bệnh nhân tìm thấy: <strong>${countRecords}</strong>
+      `;
+
+      document.getElementById('analysis-text').innerHTML = analysisHtml;
+      document.getElementById('import-analysis-block').classList.remove('hidden');
+
+    } catch (err) {
+      alert("Lỗi đọc file (.json Parse Error): " + err.message);
+      document.getElementById('import-analysis-block').classList.add('hidden');
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function executeImportDataAdvanced() {
+  if (!globalParsedImportData) return;
+
+  const mode = document.querySelector('input[name="importMode"]:checked').value;
+  
+  let confirmMsg = mode === 'overwrite' 
+    ? "CẢNH BÁO: Chế độ 'Ghi đè' sẽ XÓA SẠCH toàn bộ phác đồ mẫu và danh sách bệnh nhân hiện tại trên trình duyệt này để thay thế bằng dữ liệu file mới.\n\nBạn có chắc chắn muốn thực thi?"
+    : "XÁC NHẬN: Hệ thống sẽ tiến hành 'Trộn thêm' dữ liệu từ file vào trình duyệt, giữ nguyên các bản ghi cũ không trùng mã định danh.\n\nTiến hành nạp dữ liệu?";
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    if (globalParsedImportData.chemo_regimens && Array.isArray(globalParsedImportData.chemo_regimens)) {
+      if (mode === 'overwrite') {
+        localStorage.setItem('chemo_regimens', JSON.stringify(globalParsedImportData.chemo_regimens));
+      } else {
+        let currentRegimens = JSON.parse(localStorage.getItem('chemo_regimens')) || [];
+        globalParsedImportData.chemo_regimens.forEach(newR => {
+          if (!currentRegimens.some(currR => currR.id.toString() === newR.id.toString() || (currR.name === newR.name && currR.cat === newR.cat))) {
+            currentRegimens.push(newR);
+          }
+        });
+        localStorage.setItem('chemo_regimens', JSON.stringify(currentRegimens));
+      }
+    }
+
+    if (globalParsedImportData.chemo_records && Array.isArray(globalParsedImportData.chemo_records)) {
+      if (mode === 'overwrite') {
+        localStorage.setItem('chemo_records', JSON.stringify(globalParsedImportData.chemo_records));
+      } else {
+        let currentRecords = JSON.parse(localStorage.getItem('chemo_records')) || [];
+        globalParsedImportData.chemo_records.forEach(newRec => {
+          if (!currentRecords.some(currRec => currRec.ts === newRec.ts && currRec.ptName === newRec.ptName)) {
+            currentRecords.push(newRec);
+          }
+        });
+        localStorage.setItem('chemo_records', JSON.stringify(currentRecords));
+      }
+    }
+
+    initDataStorage();
+    filterCat(null);
+    renderHistory();
+
+    alert("Đồng bộ và thực thi nạp dữ liệu thành công!");
+    
+    document.getElementById('import-analysis-block').classList.add('hidden');
+    document.getElementById('import-file-advanced').value = '';
+    globalParsedImportData = null;
+
+  } catch (err) {
+    alert("Xảy ra lỗi trong quá trình ghi dữ liệu: " + err.message);
+  }
+}
+
+initDataStorage();
+initDates();
+renderCatTabs(null);
+renderRegimenGrid(null);
+renderDrugs();
+</script>
+</body>
+</html>
