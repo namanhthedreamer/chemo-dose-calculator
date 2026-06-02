@@ -1463,6 +1463,13 @@ function renderHistory(){
   }).join('');
 }
 
+
+function toggleCycleDetail(detailId) {
+  const el = document.getElementById(detailId);
+  if (!el) return;
+  el.classList.toggle('hidden');
+}
+
 function togglePatientCard(cardId) {
   const panel = document.getElementById(cardId);
   const icon = document.getElementById('toggle-icon-' + cardId);
