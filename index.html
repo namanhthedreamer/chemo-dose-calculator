@@ -134,7 +134,7 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
       <div style="font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 10px;"><i class="ti ti-edit" aria-hidden="true"></i> Nhập thông tin phác đồ mẫu mới</div>
       <div class="grid3">
         <div class="field"><label>Tên phác đồ</label><input id="cr-name" type="text" placeholder="Vd: FOLFIRI (Modified)"></div>
-        <div class="field"><label>Nhóm bệnh</label><input id="cr-cat" type="text" placeholder="Vd: Đại trực tàng"></div>
+        <div class="field"><label>Nhóm bệnh</label><input id="cr-cat" type="text" placeholder="Vd: Đại trực tràng"></div>
         <div class="field"><label>Chu kỳ (ngày)</label><input id="cr-cycle" type="number" placeholder="21" value="21"></div>
       </div>
       <div class="field" style="margin-top: 10px;">
@@ -315,21 +315,21 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
 
 <script>
 const DEFAULT_REGIMENS = [
-  {id:'folfox6',name:'FOLFOX-6',cat:'Đại trực tàng',cycle:14,indication:'Ung thư đại trực tàng giai đoạn tiến xa / bổ trợ (ref: eviQ FOLFOX)',
+  {id:'folfox6',name:'FOLFOX-6',cat:'Đại trực tràng',cycle:14,indication:'Ung thư đại trực tàng giai đoạn tiến xa / bổ trợ (ref: eviQ FOLFOX)',
    drugs:[
     {name:'Oxaliplatin',doseType:'bsa',dose:85,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch trung tâm hoặc ngoại vi'},
     {name:'Leucovorin (Folinic acid)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch đồng thời hoặc sau Oxaliplatin'},
     {name:'5-Fluorouracil (bolus)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm (Bolus) trên 10-15 phút'},
     {name:'5-Fluorouracil (infusion 46h)',doseType:'bsa',dose:2400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:2760,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch liên tục bằng máy hoặc bơm tiêm điện trong 46 giờ'}
    ]},
-  {id:'folfiri',name:'FOLFIRI',cat:'Đại trực tàng',cycle:14,indication:'Ung thư đại trực tàng tiến xa, line 1–2 (eviQ FOLFIRI)',
+  {id:'folfiri',name:'FOLFIRI',cat:'Đại trực tràng',cycle:14,indication:'Ung thư đại trực tàng tiến xa, line 1–2 (eviQ FOLFIRI)',
    drugs:[
     {name:'Irinotecan',doseType:'bsa',dose:180,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:90,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Theo dõi tác dụng phụ cholinergic cấp)'},
     {name:'Leucovorin',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
     {name:'5-Fluorouracil (bolus)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm (Bolus)'},
     {name:'5-Fluorouracil (infusion 46h)',doseType:'bsa',dose:2400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:2760,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch liên tục trong 46 giờ bằng bơm tiêm điện'}
    ]},
-  {id:'xelox',name:'XELOX (CAPOX)',cat:'Đại trực tàng',cycle:21,indication:'Ung thư đại trực tàng bổ trợ / tiến xa (eviQ CAPOX)',
+  {id:'xelox',name:'XELOX (CAPOX)',cat:'Đại trực tràng',cycle:21,indication:'Ung thư đại trực tàng bổ trợ / tiến xa (eviQ CAPOX)',
    drugs:[
     {name:'Oxaliplatin',doseType:'bsa',dose:130,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
     {name:'Capecitabine',doseType:'bsa',dose:1000,unit:'mg/m² × 2 lần/ngày (uống)',diluent:'Uống (oral)',volume:0,infTime:0,days:[1,2,3,4,5,6,7,8,9,10,11,12,13,14],maxDose:0,instruction:'Uống thuốc với nước trong vòng 30 phút sau bữa ăn sáng và tối'}
@@ -1077,7 +1077,7 @@ function saveAsTemplate() {
   if (!name) { alert('Vui lòng nhập tên phác đồ tại tab Tính liều trước khi xuất cấu trúc mẫu!'); return; }
   if (drugs.length === 0) { alert('Cấu hình hiện hành trống, không thể xuất phác đồ mẫu!'); return; }
 
-  const cat = prompt('Nhập danh mục/nhóm bệnh cho phác đồ mẫu này (Vd: Đại trực tàng, Ung thư vú):', 'Cá nhân') || 'Cá nhân';
+  const cat = prompt('Nhập danh mục/nhóm bệnh cho phác đồ mẫu này (Vd: Đại trực tràng, Ung thư vú):', 'Cá nhân') || 'Cá nhân';
 
   const newRegimen = {
     id: 'custom-' + Date.now(),
