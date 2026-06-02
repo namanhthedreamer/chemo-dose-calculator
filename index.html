@@ -261,7 +261,7 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
       </div>
       <div class="field">
         <label>Liều dùng thực tế (% so với chuẩn)</label>
-        <select id="dose-reduction-pct">
+        <select id="dose-reduction-pct" onchange="recalc()">
           <option value="100">100% — Liều chuẩn đầy đủ</option>
           <option value="90">90% — Giảm 10%</option>
           <option value="80">80% — Giảm 20%</option>
@@ -798,6 +798,47 @@ function calcDrug(id){
   const d=drugs.find(x=>x.id===id);if(!d)return;
   const bsa=parseFloat(document.getElementById('bsa-val').textContent)||0;
   const egfr=parseFloat(document.getElementById('crcl-val').textContent)||0;
+  
+  let theoretical = 0;
+  if(d.doseType==='bsa'&&bsa>0) theoretical=d.dose*bsa;
+  else if(d.doseType==='auc'&&egfr>0) theoretical=d.dose*(egfr+25);
+  else if(d.doseType==='flat') theoretical=d.dose;
+  
+  // Đọc giá trị % giảm liều từ thẻ select
+  const pctEl = document.getElementById('dose-reduction-pct');
+  const pctValue = (pctEl && pctEl.value !== 'custom') ? parseFloat(pctEl.value) : 100;
+
+  // Tính liều sau khi đã giảm theo % cường độ liều (RDI thực tế của chu kỳ)
+  let adjustedDose = theoretical * (pctValue / 100);
+  let finalDose = adjustedDose;
+  let pctString = '';
+  
+  // Hiển thị thông báo nếu có giảm liều
+  if(pctValue < 100 && adjustedDose > 0) {
+    pctString += `<span style="font-size:11px; font-weight:500; color:#92400E; display:block; margin-top:2px;">(Đã giảm liều còn ${pctValue}%: ${adjustedDose.toFixed(1)} mg / gốc ${theoretical.toFixed(1)} mg)</span>`;
+  }
+
+  // Kiểm tra liều trần (maxDose) trên liều đã điều chỉnh
+  if(d.maxDose > 0 && adjustedDose > d.maxDose) {
+    finalDose = d.maxDose; 
+    let pct = (d.maxDose / theoretical * 100).toFixed(1);
+    pctString += `<span style="font-size:11px; font-weight:500; color:#A32D2D; display:block; margin-top:2px;">(Áp liều trần bảo vệ: ${d.maxDose} mg, đạt ${pct}% liều lý thuyết gốc)</span>`;
+  } else if(d.maxDose > 0 && adjustedDose <= d.maxDose && adjustedDose > 0) {
+    pctString += `<span style="font-size:11px; font-weight:normal; color:#27500A; display:block; margin-top:2px;">(Dưới ngưỡng giới hạn trần: ${d.maxDose} mg)</span>`;
+  }
+  
+  const re=document.getElementById('result-'+id);
+  if(re) {
+    if(finalDose > 0) {
+      re.innerHTML = `<strong>${finalDose.toFixed(1)} mg</strong> ${pctString}`;
+    } else {
+      re.textContent = '—';
+    }
+  }
+  
+  const ce=document.getElementById('conc-'+id);
+  if(ce&&d.volume>0&&finalDose>0) ce.textContent=(finalDose/d.volume).toFixed(2)+' mg/mL';
+}
   
   let theoretical = 0;
   if(d.doseType==='bsa'&&bsa>0) theoretical=d.dose*bsa;
