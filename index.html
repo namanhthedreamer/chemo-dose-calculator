@@ -98,6 +98,22 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
 .tl-dot-line{flex:1;width:2px;background:#DDD6FE;margin-top:2px;}
 .tl-card{flex:1;background:#fff;border:0.5px solid #e5e7eb;border-radius:var(--border-radius-md);padding:10px 14px;margin-bottom:8px;}
 .di-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px;}
+/* Drug therapy type badges */
+.dtype-chemo{background:#FEE2E2;color:#991B1B;}
+.dtype-targeted{background:#DBEAFE;color:#1E40AF;}
+.dtype-immuno{background:#D1FAE5;color:#065F46;}
+.dtype-hormone{background:#FEF3C7;color:#92400E;}
+.dtype-adc{background:#EDE9FE;color:#4C1D95;}
+/* Dose management panel */
+.dm-panel{border-radius:var(--border-radius-md);padding:8px 12px;margin-top:8px;font-size:12px;display:flex;align-items:flex-start;gap:8px;}
+.dm-chemo{background:#FEF9C3;border:0.5px solid #FCD34D;}
+.dm-targeted,.dm-immuno{background:#DBEAFE;border:0.5px solid #93C5FD;}
+.dm-hormone{background:#FEF3C7;border:0.5px solid #FCD34D;}
+.dm-adc{background:#EDE9FE;border:0.5px solid #C4B5FD;}
+.dm-status-select{height:30px;padding:0 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:#fff;color:var(--color-text-primary);font-size:12px;font-weight:600;cursor:pointer;}
+.dm-status-select.status-hold{border-color:#F59E0B;color:#92400E;background:#FFFBEB;}
+.dm-status-select.status-stop{border-color:#EF4444;color:#991B1B;background:#FEF2F2;}
+.dm-status-select.status-active{border-color:#10B981;color:#065F46;background:#ECFDF5;}
 
 @media print {
   .no-print { display: none !important; }
@@ -179,7 +195,7 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
 
         <table class="sch-table" style="margin-bottom:0.5rem">
           <thead><tr id="prev-table-header">
-            <th>Thuốc</th><th>Liều cơ sở</th><th>Loại liều</th><th>Đường dùng</th><th>mg/viên</th><th>Dung môi</th><th>T.tích pha</th><th>T/gian truyền</th><th>Ngày dùng (D)</th><th>Cách dùng</th><th>Liều trần (Max)</th><th class="tmpl-edit-col hidden">Thao tác</th>
+            <th>Thuốc</th><th>Liều cơ sở</th><th>Loại liều</th><th>Loại thuốc</th><th>Đường dùng</th><th>mg/viên</th><th>Dung môi</th><th>T.tích pha</th><th>T/gian truyền</th><th>Ngày dùng (D)</th><th>Cách dùng</th><th>Liều trần (Max)</th><th class="tmpl-edit-col hidden">Thao tác</th>
           </tr></thead>
           <tbody id="prev-table"></tbody>
         </table>
@@ -264,6 +280,9 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
         <input id="dose-reduction-pct" type="number" min="0" max="100" step="0.1" value="100" placeholder="Vd: 95" oninput="recalc()">
       </div>
     </div>
+    <div style="font-size:11px; color:var(--color-text-secondary); background:#f9fafb; border:0.5px dashed #e5e7eb; border-radius:6px; padding:8px 10px; margin-top:-4px; margin-bottom:8px;">
+      <i class="ti ti-info-circle" style="color:#0C447C;"></i> <strong>% liều</strong> chỉ áp dụng cho thuốc loại <span class="badge dtype-chemo" style="font-size:10px;">Hóa trị</span>. Thuốc <span class="badge dtype-targeted" style="font-size:10px;">Trúng đích</span> / <span class="badge dtype-immuno" style="font-size:10px;">Miễn dịch</span> / <span class="badge dtype-hormone" style="font-size:10px;">Nội tiết</span> / <span class="badge dtype-adc" style="font-size:10px;">ADC</span> — xem trạng thái ngưng thuốc trong từng block bên dưới.
+    </div>
     
     <hr class="ui-divider-dashed">
     
@@ -346,43 +365,43 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
 const DEFAULT_REGIMENS = [
   {id:'folfox6',name:'FOLFOX-6',cat:'Đại trực tàng',cycle:14,indication:'Ung thư đại trực tàng giai đoạn tiến xa / bổ trợ (ref: eviQ FOLFOX)',
    drugs:[
-    {name:'Oxaliplatin',doseType:'bsa',dose:85,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch trung tâm hoặc ngoại vi'},
-    {name:'Leucovorin (Folinic acid)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch đồng thời hoặc sau Oxaliplatin'},
-    {name:'5-Fluorouracil (bolus)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm (Bolus) trên 10-15 phút'},
-    {name:'5-Fluorouracil (infusion 46h)',doseType:'bsa',dose:2400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:2760,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch liên tục bằng máy hoặc bơm tiêm điện trong 46 giờ'}
+    {name:'Oxaliplatin',drugType:'chemo',doseType:'bsa',dose:85,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch trung tâm hoặc ngoại vi'},
+    {name:'Leucovorin (Folinic acid)',drugType:'chemo',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch đồng thời hoặc sau Oxaliplatin'},
+    {name:'5-Fluorouracil (bolus)',drugType:'chemo',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm (Bolus) trên 10-15 phút'},
+    {name:'5-Fluorouracil (infusion 46h)',drugType:'chemo',doseType:'bsa',dose:2400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:2760,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch liên tục bằng máy hoặc bơm tiêm điện trong 46 giờ'}
    ]},
   {id:'folfiri',name:'FOLFIRI',cat:'Đại trực tàng',cycle:14,indication:'Ung thư đại trực tàng tiến xa, line 1–2 (eviQ FOLFIRI)',
    drugs:[
-    {name:'Irinotecan',doseType:'bsa',dose:180,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:90,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Theo dõi tác dụng phụ cholinergic cấp)'},
-    {name:'Leucovorin',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
-    {name:'5-Fluorouracil (bolus)',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm (Bolus)'},
-    {name:'5-Fluorouracil (infusion 46h)',doseType:'bsa',dose:2400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:2760,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch liên tục trong 46 giờ bằng bơm tiêm điện'}
+    {name:'Irinotecan',drugType:'chemo',doseType:'bsa',dose:180,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:90,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Theo dõi tác dụng phụ cholinergic cấp)'},
+    {name:'Leucovorin',drugType:'chemo',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
+    {name:'5-Fluorouracil (bolus)',drugType:'chemo',doseType:'bsa',dose:400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm (Bolus)'},
+    {name:'5-Fluorouracil (infusion 46h)',drugType:'chemo',doseType:'bsa',dose:2400,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:2760,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch liên tục trong 46 giờ bằng bơm tiêm điện'}
    ]},
   {id:'xelox',name:'XELOX (CAPOX)',cat:'Đại trực tàng',cycle:21,indication:'Ung thư đại trực tàng bổ trợ / tiến xa (eviQ CAPOX)',
    drugs:[
-    {name:'Oxaliplatin',doseType:'bsa',dose:130,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
-    {name:'Capecitabine',doseType:'bsa',dose:1000,unit:'mg/m² × 2 lần/ngày (uongs)',diluent:'Uống (oral)',volume:0,infTime:0,days:[1,2,3,4,5,6,7,8,9,10,11,12,13,14],maxDose:0,instruction:'Uống thuốc với nước trong vòng 30 phút sau bữa ăn sáng và tối'}
+    {name:'Oxaliplatin',drugType:'chemo',doseType:'bsa',dose:130,unit:'mg/m²',diluent:'Glucose 5%',volume:250,infTime:120,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
+    {name:'Capecitabine',drugType:'chemo',doseType:'bsa',dose:1000,unit:'mg/m² × 2 lần/ngày (uongs)',route:'oral',oralStrength:500,diluent:'Uống (oral)',volume:2,infTime:0,days:[1,2,3,4,5,6,7,8,9,10,11,12,13,14],maxDose:0,instruction:'Uống thuốc với nước trong vòng 30 phút sau bữa ăn sáng và tối'}
    ]},
   {id:'act',name:'AC-T (ddAC→T)',cat:'Ung thư vú',cycle:14,indication:'Ung thư vú giai đoạn sớm — bổ trợ/tân bổ trợ (eviQ AC-T)',
    drugs:[
-    {name:'Doxorubicin',doseType:'bsa',dose:60,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm/Truyền tĩnh mạch tự do (Theo dõi sát vị trí tiêm tránh thoát mạch)'},
-    {name:'Cyclophosphamide',doseType:'bsa',dose:600,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Khuyến khích bệnh nhân uống nhiều nước)'}
+    {name:'Doxorubicin',drugType:'chemo',doseType:'bsa',dose:60,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm/Truyền tĩnh mạch tự do (Theo dõi sát vị trí tiêm tránh thoát mạch)'},
+    {name:'Cyclophosphamide',drugType:'chemo',doseType:'bsa',dose:600,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Khuyến khích bệnh nhân uống nhiều nước)'}
    ]},
   {id:'paclitaxel-w',name:'Paclitaxel weekly',cat:'Ung thư vú',cycle:7,indication:'Ung thư vú — dùng tuần (eviQ Paclitaxel weekly)',
    drugs:[
-    {name:'Paclitaxel',doseType:'bsa',dose:80,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Bắt buộc dùng bộ dây truyền chuyên dụng có màng lọc 0.22 micron)'}
+    {name:'Paclitaxel',drugType:'chemo',doseType:'bsa',dose:80,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch (Bắt buộc dùng bộ dây truyền chuyên dụng có màng lọc 0.22 micron)'}
    ]},
   {id:'chop',name:'CHOP',cat:'Lymphoma',cycle:21,indication:'Lymphoma không Hodgkin — DLBCL, FL (eviQ CHOP)',
    drugs:[
-    {name:'Cyclophosphamide',doseType:'bsa',dose:750,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
-    {name:'Doxorubicin',doseType:'bsa',dose:50,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm qua dây truyền đang chạy tự do'},
-    {name:'Vincristine',doseType:'flat',dose:1.4,unit:'mg',diluent:'NaCl 0.9%',volume:50,infTime:10,days:[1],maxDose:2,instruction:'Truyền tĩnh mạch chậm hoặc tiêm qua chạc chữ Y. TUYỆT ĐỐI KHÔNG TIÊM TỦY SỐNG.'},
-    {name:'Prednisolone',doseType:'flat',dose:100,unit:'mg/ngày (uongs)',diluent:'Uống (oral)',volume:0,infTime:0,days:[1,2,3,4,5],maxDose:0,instruction:'Uống một lần vào buổi sáng sau ăn'}
+    {name:'Cyclophosphamide',drugType:'chemo',doseType:'bsa',dose:750,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
+    {name:'Doxorubicin',drugType:'chemo',doseType:'bsa',dose:50,unit:'mg/m²',diluent:'NaCl 0.9%',volume:100,infTime:15,days:[1],maxDose:0,instruction:'Tiêm tĩnh mạch chậm qua dây truyền đang chạy tự do'},
+    {name:'Vincristine',drugType:'chemo',doseType:'flat',dose:1.4,unit:'mg',diluent:'NaCl 0.9%',volume:50,infTime:10,days:[1],maxDose:2,instruction:'Truyền tĩnh mạch chậm hoặc tiêm qua chạc chữ Y. TUYỆT ĐỐI KHÔNG TIÊM TỦY SỐNG.'},
+    {name:'Prednisolone',drugType:'chemo',doseType:'flat',dose:100,unit:'mg/ngày (uongs)',diluent:'Uống (oral)',volume:0,infTime:0,days:[1,2,3,4,5],maxDose:0,instruction:'Uống một lần vào buổi sáng sau ăn'}
    ]},
   {id:'carbotax',name:'Carboplatin-Paclitaxel',cat:'Phổi / Buồng trứng',cycle:21,indication:'NSCLC giai đoạn tiến xa; Ung thư buồng trứng (eviQ)',
    drugs:[
-    {name:'Carboplatin',doseType:'auc',dose:5,unit:'AUC 5',diluent:'Glucose 5%',volume:250,infTime:30,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
-    {name:'Paclitaxel',doseType:'bsa',dose:175,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:180,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch bằng bộ dây có màng lọc 0.22 micron. Dùng trước Carboplatin.'}
+    {name:'Carboplatin',drugType:'chemo',doseType:'auc',dose:5,unit:'AUC 5',diluent:'Glucose 5%',volume:250,infTime:30,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch'},
+    {name:'Paclitaxel',drugType:'chemo',doseType:'bsa',dose:175,unit:'mg/m²',diluent:'NaCl 0.9%',volume:500,infTime:180,days:[1],maxDose:0,instruction:'Truyền tĩnh mạch bằng bộ dây có màng lọc 0.22 micron. Dùng trước Carboplatin.'}
    ]}
 ];
 
@@ -394,14 +413,45 @@ let selectedRegimen = null;
 let activeCat = null;
 let isEditingTemplate = false;
 let globalParsedImportData = null;
+const REGIMEN_SCHEMA_VERSION = 2;
+
+function mergeRegimensWithDefaults(stored, defaults) {
+  const defById = Object.fromEntries(defaults.map(r => [r.id, r]));
+  return stored.map(r => {
+    const def = defById[r.id];
+    if (!def) return r;
+    const defDrugByName = Object.fromEntries((def.drugs || []).map(d => [d.name, d]));
+    return {
+      ...r,
+      drugs: (r.drugs || []).map(d => {
+        const base = defDrugByName[d.name];
+        if (!base) return d;
+        const route = d.route || base.route || inferRoute(d);
+        const oralStrength = parseFloat(d.oralStrength) || parseFloat(base.oralStrength) || 0;
+        let volume = parseFloat(d.volume);
+        if (route === 'oral' && !(volume > 0)) {
+          volume = parseFloat(base.volume) || inferOralFrequency(base) || 1;
+        }
+        return { ...d, route, oralStrength, volume: route === 'oral' ? volume : (parseFloat(d.volume) || parseFloat(base.volume) || 0) };
+      })
+    };
+  });
+}
 
 function initDataStorage() {
   const stored = localStorage.getItem('chemo_regimens');
   if (!stored) {
     localStorage.setItem('chemo_regimens', JSON.stringify(DEFAULT_REGIMENS));
+    localStorage.setItem('chemo_regimens_version', String(REGIMEN_SCHEMA_VERSION));
     REGIMENS = JSON.parse(JSON.stringify(DEFAULT_REGIMENS));
   } else {
     REGIMENS = JSON.parse(stored);
+    const ver = parseInt(localStorage.getItem('chemo_regimens_version'), 10) || 0;
+    if (ver < REGIMEN_SCHEMA_VERSION) {
+      REGIMENS = mergeRegimensWithDefaults(REGIMENS, DEFAULT_REGIMENS);
+      localStorage.setItem('chemo_regimens', JSON.stringify(REGIMENS));
+      localStorage.setItem('chemo_regimens_version', String(REGIMEN_SCHEMA_VERSION));
+    }
   }
   REGIMENS = REGIMENS.map(r => ({
     ...r,
@@ -515,43 +565,117 @@ function inferOralFrequency(d) {
   return 0;
 }
 
-function oralTabletTotal(d) {
-  return (parseFloat(d.oralTabsMorning)||0) +
-    (parseFloat(d.oralTabsNoon)||0) +
-    (parseFloat(d.oralTabsEvening)||0);
-}
-
-function oralTabletScheduleText(d) {
-  const parts = [];
-  const morning = parseFloat(d.oralTabsMorning)||0;
-  const noon = parseFloat(d.oralTabsNoon)||0;
-  const evening = parseFloat(d.oralTabsEvening)||0;
-  if(morning>0) parts.push(`Sáng ${morning} viên`);
-  if(noon>0) parts.push(`Trưa ${noon} viên`);
-  if(evening>0) parts.push(`Tối ${evening} viên`);
-  return parts.join(', ');
-}
-
 function normalizeDrug(d) {
   const route = inferRoute(d || {});
   const doseType = d.doseType || 'bsa';
-  const oralFrequency = route === 'oral' ? (parseFloat(d.volume) || inferOralFrequency(d || {})) : (parseFloat(d.volume) || 0);
-  const legacyTabs = parseFloat(d.oralTablets)||0;
+  const drugType = d.drugType || 'chemo';
+  const oralFrequency = route === 'oral' ? (parseFloat(d.volume) || inferOralFrequency(d || {}) || 1) : (parseFloat(d.volume) || 0);
   return {
     ...d,
     route,
     doseType,
+    drugType,
     unit: cleanDoseUnit(d.unit, doseType),
     oralStrength: parseFloat(d.oralStrength) || 0,
-    oralTabsMorning: parseFloat(d.oralTabsMorning) || 0,
-    oralTabsNoon: parseFloat(d.oralTabsNoon) || 0,
-    oralTabsEvening: parseFloat(d.oralTabsEvening) || legacyTabs || 0,
     diluent: route === 'oral' ? 'Không áp dụng' : (d.diluent || 'NaCl 0.9%'),
-    volume: oralFrequency,
+    volume: route === 'oral' ? oralFrequency : (parseFloat(d.volume) || 0),
     infTime: route === 'oral' ? 0 : (parseFloat(d.infTime) || 0),
     days: Array.isArray(d.days) ? d.days : parseDays(d.days),
     maxDose: parseFloat(d.maxDose) || 0,
-    instruction: d.instruction || ''
+    instruction: d.instruction || '',
+    holdStatus: d.holdStatus || 'active'
+  };
+}
+
+function getTimesPerDay(d) {
+  const nd = normalizeDrug(d);
+  if (nd.route !== 'oral') return 1;
+  const fromVol = parseFloat(nd.volume) || 0;
+  if (fromVol > 0) return fromVol;
+  const inferred = inferOralFrequency(nd);
+  return inferred > 0 ? inferred : 1;
+}
+
+function splitTabletsPerDay(totalTablets, timesPerDay) {
+  if (!timesPerDay || timesPerDay <= 1) {
+    return [{ label: 'trong ngày', tablets: totalTablets }];
+  }
+  const labels = ['sáng', 'tối', 'trưa', 'chiều'];
+  const parts = [];
+  let remaining = totalTablets;
+  for (let i = 0; i < timesPerDay; i++) {
+    const left = timesPerDay - i;
+    const count = i === timesPerDay - 1 ? remaining : Math.ceil(remaining / left);
+    remaining -= count;
+    parts.push({ label: labels[i] || `lần ${i + 1}`, tablets: count });
+  }
+  return parts;
+}
+
+function formatTabletSchedule(parts) {
+  if (!parts || !parts.length) return '';
+  if (parts.length === 1 && parts[0].label === 'trong ngày') {
+    return `${parts[0].tablets} viên/ngày`;
+  }
+  return `${parts.reduce((s, p) => s + p.tablets, 0)} viên/ngày (${parts.map(p => `${p.label} ${p.tablets}`).join(', ')})`;
+}
+
+function computeDrugDose(d, opts) {
+  const bsa = opts?.bsa ?? (parseFloat(document.getElementById('bsa-val')?.textContent) || 0);
+  const egfr = opts?.egfr ?? (parseFloat(document.getElementById('crcl-val')?.textContent) || 0);
+  const dosePct = opts?.dosePct ?? (parseFloat(document.getElementById('dose-reduction-pct')?.value) || 100);
+  const minTabletPct = opts?.minTabletPct ?? 95;
+
+  d = normalizeDrug(d);
+  const timesPerDay = getTimesPerDay(d);
+
+  let theoretical = 0;
+  if (d.doseType === 'bsa' && bsa > 0) {
+    theoretical = d.dose * bsa;
+    if (d.route === 'oral' && timesPerDay > 1) theoretical *= timesPerDay;
+  } else if (d.doseType === 'auc' && egfr > 0) {
+    theoretical = d.dose * (egfr + 25);
+  } else if (d.doseType === 'flat') {
+    theoretical = d.dose;
+    if (d.route === 'oral' && timesPerDay > 1 && !/ngày|daily/i.test(d.unit || '')) {
+      theoretical *= timesPerDay;
+    }
+  }
+
+  let targetMg = theoretical * (dosePct / 100);
+  let cappedByMax = false;
+  if (d.maxDose > 0 && targetMg > d.maxDose) {
+    targetMg = d.maxDose;
+    cappedByMax = true;
+  }
+
+  let finalMg = targetMg;
+  let tabletsPerDay = 0;
+  let tabletParts = [];
+  let tabletPct = theoretical > 0 ? (finalMg / theoretical * 100) : null;
+
+  if (d.route === 'oral' && d.oralStrength > 0 && targetMg > 0) {
+    tabletsPerDay = Math.max(1, Math.ceil((targetMg * minTabletPct / 100) / d.oralStrength));
+    if (d.maxDose > 0 && tabletsPerDay * d.oralStrength > d.maxDose) {
+      tabletsPerDay = Math.max(1, Math.floor(d.maxDose / d.oralStrength));
+      cappedByMax = true;
+    }
+    finalMg = tabletsPerDay * d.oralStrength;
+    tabletParts = splitTabletsPerDay(tabletsPerDay, timesPerDay);
+    tabletPct = theoretical > 0 ? (finalMg / theoretical * 100) : null;
+  }
+
+  return {
+    theoretical,
+    targetMg,
+    finalMg,
+    tabletsPerDay,
+    tabletParts,
+    tabletPct,
+    timesPerDay,
+    cappedByMax,
+    route: d.route,
+    oralStrength: d.oralStrength
   };
 }
 
@@ -618,14 +742,18 @@ function selectRegimen(id){
   } else {
     tbody.innerHTML=selectedRegimen.drugs.map(d=>{
       d = normalizeDrug(d);
+      const dtypeLabels = {chemo:'Hóa trị',targeted:'Trúng đích',immuno:'Miễn dịch',hormone:'Nội tiết',adc:'ADC'};
+      const dtypeCls = {chemo:'dtype-chemo',targeted:'dtype-targeted',immuno:'dtype-immuno',hormone:'dtype-hormone',adc:'dtype-adc'};
+      const dt = d.drugType || 'chemo';
       return `<tr>
         <td><strong>${d.name}</strong></td>
         <td>${d.dose} ${d.unit}</td>
         <td><span class="badge b-${d.doseType}">${d.doseType==='bsa'?'BSA':d.doseType==='auc'?'AUC':'Flat'}</span></td>
+        <td><span class="badge ${dtypeCls[dt]}">${dtypeLabels[dt]||dt}</span></td>
         <td><span class="cycle-badge">${routeLabel(d.route)}</span></td>
         <td>${d.route==='oral' && d.oralStrength>0?d.oralStrength+' mg':'—'}</td>
         <td>${d.diluent}</td>
-        <td>${d.volume>0?d.volume+' mL':'—'}</td>
+        <td>${d.volume>0?(d.route==='oral'?d.volume+' lần/ngày':d.volume+' mL'):'—'}</td>
         <td>${d.infTime>60?(d.infTime/60).toFixed(1)+'h':d.infTime>0?d.infTime+'ph':'—'}</td>
         <td><span class="tag-day">D${formatDays(d.days)}</span></td>
         <td style="font-size:11px; color:var(--color-text-secondary); font-style:italic;">${d.instruction || '—'}</td>
@@ -679,6 +807,15 @@ function renderTemplateEditor() {
           </select>
         </td>
         <td>
+          <select class="tmpl-d-drugtype" style="padding:4px; width:100%; font-size:11px;">
+            <option value="chemo" ${(d.drugType||'chemo')==='chemo'?'selected':''}>Hóa trị</option>
+            <option value="targeted" ${d.drugType==='targeted'?'selected':''}>Trúng đích</option>
+            <option value="immuno" ${d.drugType==='immuno'?'selected':''}>Miễn dịch</option>
+            <option value="hormone" ${d.drugType==='hormone'?'selected':''}>Nội tiết</option>
+            <option value="adc" ${d.drugType==='adc'?'selected':''}>ADC</option>
+          </select>
+        </td>
+        <td>
           <select class="tmpl-d-route" style="padding:4px; width:100%;">
             <option value="iv" ${d.route==='iv'?'selected':''}>Truyền/Tiêm TM</option>
             <option value="oral" ${d.route==='oral'?'selected':''}>Uống</option>
@@ -709,7 +846,7 @@ function renderTemplateEditor() {
   
   html += `
     <tr class="no-print">
-      <td colspan="12" style="padding:12px 0; background:none;">
+      <td colspan="13" style="padding:12px 0; background:none;">
         <button class="btn-sec" onclick="addTmplDrug()"><i class="ti ti-plus"></i> Thêm hoạt chất mới vào mẫu</button>
         <button class="btn-primary" style="float:right;" onclick="saveTemplateChanges()"><i class="ti ti-device-floppy"></i> Lưu toàn bộ cấu trúc phác đồ</button>
       </td>
@@ -725,7 +862,7 @@ function removeTmplDrug(idx) {
 
 function addTmplDrug() {
   selectedRegimen.drugs.push({
-    name: 'Thuốc mới', route: 'iv', doseType: 'bsa', dose: 0, unit: 'mg/m²', oralStrength: 0, diluent: 'NaCl 0.9%', volume: 250, infTime: 60, days: [1], maxDose: 0, instruction: ''
+    name: 'Thuốc mới', route: 'iv', drugType: 'chemo', doseType: 'bsa', dose: 0, unit: 'mg/m²', oralStrength: 0, diluent: 'NaCl 0.9%', volume: 250, infTime: 60, days: [1], maxDose: 0, instruction: ''
   });
   renderTemplateEditor();
 }
@@ -744,6 +881,7 @@ function saveTemplateChanges() {
     const dName = row.querySelector('.tmpl-d-name').value.trim();
     const dDose = parseFloat(row.querySelector('.tmpl-d-dose').value) || 0;
     const dType = row.querySelector('.tmpl-d-type').value;
+    const dDrugType = row.querySelector('.tmpl-d-drugtype')?.value || 'chemo';
     const dRoute = row.querySelector('.tmpl-d-route').value;
     const dStrength = parseFloat(row.querySelector('.tmpl-d-strength').value) || 0;
     let dDiluent = row.querySelector('.tmpl-d-diluent').value;
@@ -763,7 +901,7 @@ function saveTemplateChanges() {
     }
     
     updatedDrugs.push(normalizeDrug({
-      name: dName, route: dRoute, doseType: dType, dose: dDose, unit: unit, oralStrength: dStrength, diluent: dDiluent, volume: dVol, infTime: dTime, days: parseDays(dDaysStr), maxDose: dMax, instruction: dIns
+      name: dName, route: dRoute, drugType: dDrugType, doseType: dType, dose: dDose, unit: unit, oralStrength: dStrength, diluent: dDiluent, volume: dVol, infTime: dTime, days: parseDays(dDaysStr), maxDose: dMax, instruction: dIns
     }));
   });
   
@@ -890,76 +1028,92 @@ function calcDrug(id){
   const d=drugs.find(x=>x.id===id);if(!d)return;
   const bsa=parseFloat(document.getElementById('bsa-val').textContent)||0;
   const egfr=parseFloat(document.getElementById('crcl-val').textContent)||0;
-  
-  let theoretical = 0;
-  if(d.doseType==='bsa'&&bsa>0) theoretical=d.dose*bsa;
-  else if(d.doseType==='auc'&&egfr>0) theoretical=d.dose*(egfr+25);
-  else if(d.doseType==='flat') theoretical=d.dose;
-  
-  let finalDose = theoretical;
-  let pctString = '';
+  const nd=normalizeDrug(d);
 
-  const dosePct =
-    parseFloat(
-      document.getElementById(
-        'dose-reduction-pct'
-      ).value
-    ) || 100;
-
-  finalDose =
-    finalDose *
-    (dosePct/100);
-  
-  if(d.maxDose > 0 && finalDose > d.maxDose) {
-    finalDose = d.maxDose; 
-    let pct = (d.maxDose / theoretical * 100).toFixed(1);
-    pctString = `<span style="font-size:11px; font-weight:500; color:#A32D2D; display:block; margin-top:2px;">(Áp liều trần bảo vệ: đạt ${pct}% liều lý thuyết gốc ${theoretical.toFixed(1)} mg)</span>`;
-  } else if(d.maxDose > 0 && finalDose <= d.maxDose && theoretical > 0) {
-    pctString = `<span style="font-size:11px; font-weight:normal; color:#27500A; display:block; margin-top:2px;">(Dưới ngưỡng giới hạn trần: ${d.maxDose} mg)</span>`;
+  // Dose % logic by drugType: targeted/immuno/hormone/adc always 100%
+  let dosePct;
+  if(nd.holdStatus === 'hold') {
+    dosePct = 0;
+  } else if(['targeted','immuno','hormone','adc'].includes(nd.drugType)) {
+    dosePct = 100;
+  } else {
+    dosePct = parseFloat(document.getElementById('dose-reduction-pct').value)||100;
   }
 
-  if(d.route==='oral' && d.oralStrength > 0 && finalDose > 0) {
-    const targetDose = finalDose;
-    let tablets = oralTabletTotal(d);
-    const min95Tablets = Math.ceil((theoretical * 0.95) / d.oralStrength);
-    if(tablets <= 0) {
-      tablets = Math.round(targetDose / d.oralStrength);
-      if(tablets < min95Tablets) tablets = min95Tablets;
-    }
-    if(tablets < 1) tablets = 1;
-    if(d.maxDose > 0 && tablets * d.oralStrength > d.maxDose) {
-      tablets = Math.floor(d.maxDose / d.oralStrength);
-      if(tablets < 1) tablets = 1;
-    }
-    finalDose = tablets * d.oralStrength;
-    const tabletPct = theoretical > 0 ? (finalDose / theoretical * 100).toFixed(1) : '—';
-    const scheduleText = oralTabletScheduleText(d);
-    pctString += `<span style="font-size:11px; font-weight:500; color:#0C447C; display:block; margin-top:2px;">(${tablets} viên/ngày × ${d.oralStrength} mg/viên; đạt ${tabletPct}% liều lý thuyết${scheduleText ? '; '+scheduleText : '; gợi ý tối thiểu '+min95Tablets+' viên/ngày để đạt ≥95%'})</span>`;
+  const calc=computeDrugDose(d,{bsa,egfr,dosePct});
+  let pctString='';
+
+  if(nd.holdStatus === 'hold') {
+    const re=document.getElementById('result-'+id);
+    if(re) re.innerHTML=`<strong style="color:#92400E;">⏸ TẠM NGƯNG</strong> <span style="font-size:11px; color:#92400E;">(Không xuất liều chu kỳ này)</span>`;
+    const ce=document.getElementById('conc-'+id);
+    if(ce) ce.textContent='—';
+    return;
   }
-  
+  if(nd.holdStatus === 'stop') {
+    const re=document.getElementById('result-'+id);
+    if(re) re.innerHTML=`<strong style="color:#991B1B;">🛑 NGƯNG HẲN</strong> <span style="font-size:11px; color:#991B1B;">(Ngừng thuốc vĩnh viễn)</span>`;
+    const ce=document.getElementById('conc-'+id);
+    if(ce) ce.textContent='—';
+    return;
+  }
+
+  if(calc.cappedByMax && calc.theoretical>0) {
+    const pct=(calc.finalMg/calc.theoretical*100).toFixed(1);
+    pctString=`<span style="font-size:11px; font-weight:500; color:#A32D2D; display:block; margin-top:2px;">(Áp liều trần bảo vệ: đạt ${pct}% liều lý thuyết gốc ${calc.theoretical.toFixed(1)} mg)</span>`;
+  } else if(nd.maxDose>0 && calc.theoretical>0 && calc.finalMg<=nd.maxDose) {
+    pctString=`<span style="font-size:11px; font-weight:normal; color:#27500A; display:block; margin-top:2px;">(Dưới ngưỡng giới hạn trần: ${nd.maxDose} mg)</span>`;
+  }
+
+  if(nd.route==='oral' && nd.oralStrength>0 && calc.tabletsPerDay>0) {
+    const sched=formatTabletSchedule(calc.tabletParts);
+    const pctDisp=calc.tabletPct!=null?calc.tabletPct.toFixed(1):'—';
+    pctString+=`<span style="font-size:11px; font-weight:500; color:#0C447C; display:block; margin-top:2px;">(${sched}; ${nd.oralStrength} mg/viên; đạt ${pctDisp}% liều lý thuyết, tối thiểu 95%)</span>`;
+  }
+
   const re=document.getElementById('result-'+id);
   if(re) {
-    if(finalDose > 0) {
-      re.innerHTML = `<strong>${finalDose.toFixed(1)} mg</strong> ${pctString}`;
+    if(calc.finalMg>0) {
+      re.innerHTML=`<strong>${calc.finalMg.toFixed(1)} mg</strong> ${pctString}`;
     } else {
-      re.textContent = '—';
+      re.textContent='—';
     }
   }
-  
+
   const ce=document.getElementById('conc-'+id);
   if(ce) {
-    if(d.route==='oral') ce.textContent='Uống';
-    else if(d.volume>0&&finalDose>0) ce.textContent=(finalDose/d.volume).toFixed(2)+' mg/mL';
+    if(nd.route==='oral') ce.textContent='Uống';
+    else if(nd.volume>0&&calc.finalMg>0) ce.textContent=(calc.finalMg/nd.volume).toFixed(2)+' mg/mL';
   }
 }
 
 function addDrug(){
   drugCounter++;
-  drugs.push({id:'drug-'+drugCounter,name:'',route:'iv',doseType:'bsa',dose:0,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:''});
+  drugs.push({id:'drug-'+drugCounter,name:'',route:'iv',drugType:'chemo',doseType:'bsa',dose:0,unit:'mg/m²',diluent:'NaCl 0.9%',volume:250,infTime:60,days:[1],maxDose:0,instruction:'',holdStatus:'active'});
   renderDrugs();recalc();
 }
 
 function removeDrug(id){drugs=drugs.filter(d=>d.id!==id);renderDrugs();}
+
+function updateDrugHoldStatus(id, status) {
+  const d = drugs.find(x => x.id === id);
+  if (!d) return;
+  d.holdStatus = status;
+  // Update select style
+  const sel = document.getElementById('hold-sel-' + id);
+  if (sel) {
+    sel.className = 'dm-status-select status-' + status;
+  }
+  calcDrug(id);
+}
+
+function updateDrugType(id, dtype) {
+  const d = drugs.find(x => x.id === id);
+  if (!d) return;
+  d.drugType = dtype;
+  renderDrugs();
+  recalc();
+}
 
 function setDoseType(id,type){
   const d=drugs.find(x=>x.id===id);if(!d)return;
@@ -991,12 +1145,72 @@ function updateDrug(id,field,val){
 function renderDrugs(){
   const list=document.getElementById('drug-list');
   list.innerHTML='';
+
+  // drugType display config
+  const dtypeMap = {
+    chemo:    {label:'Hóa trị',    cls:'dtype-chemo',    icon:'ti-flask'},
+    targeted: {label:'Trúng đích', cls:'dtype-targeted', icon:'ti-target'},
+    immuno:   {label:'Miễn dịch',  cls:'dtype-immuno',   icon:'ti-shield-check'},
+    hormone:  {label:'Nội tiết',   cls:'dtype-hormone',  icon:'ti-pill'},
+    adc:      {label:'ADC',        cls:'dtype-adc',      icon:'ti-atom'}
+  };
+  const dtypePanelCls = {chemo:'dm-chemo', targeted:'dm-targeted', immuno:'dm-immuno', hormone:'dm-hormone', adc:'dm-adc'};
+  const dtypeInfo = {
+    chemo:    'Hóa trị: Cho phép giảm liều theo % chuẩn.',
+    targeted: 'Thuốc trúng đích: Luôn dùng 100% liều chuẩn. Nếu độc tính → Tạm ngưng hoặc Ngưng hẳn (ASCO/NCCN).',
+    immuno:   'Liệu pháp miễn dịch: Luôn dùng 100% liều chuẩn. Nếu irAE → Tạm ngưng hoặc Ngưng hẳn (ASCO/NCCN).',
+    hormone:  'Nội tiết: Liều cố định, không tính BSA/cân nặng. Không điều chỉnh % liều.',
+    adc:      'ADC: Giảm liều theo Dose level quy định trong FDA label, không giảm % tự do.'
+  };
+
   drugs.forEach((d, index)=>{
     d = normalizeDrug(d);
     drugs[index] = {...d, id: drugs[index].id};
     const bmap={'bsa':'BSA','auc':'AUC (Calvert)','flat':'Flat dose'};
     const bcls={'bsa':'b-bsa','auc':'b-auc','flat':'b-flat'};
     const isOral = d.route === 'oral';
+    const dtype = d.drugType || 'chemo';
+    const dtInfo = dtypeMap[dtype] || dtypeMap.chemo;
+    const isLocked = ['targeted','immuno','hormone','adc'].includes(dtype);
+
+    // Build dose management panel
+    let dmPanel = '';
+    if (dtype === 'chemo') {
+      dmPanel = `<div class="dm-panel dm-chemo"><i class="ti ti-info-circle" style="flex-shrink:0; color:#92400E;"></i><span>${dtypeInfo.chemo}</span></div>`;
+    } else if (dtype === 'targeted' || dtype === 'immuno') {
+      dmPanel = `<div class="dm-panel ${dtypePanelCls[dtype]}">
+        <i class="ti ti-info-circle" style="flex-shrink:0; color:#1E40AF;"></i>
+        <div style="flex:1;">
+          <span>${dtypeInfo[dtype]}</span>
+          <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--color-text-secondary);">Trạng thái thuốc:</span>
+            <select id="hold-sel-${d.id}" class="dm-status-select status-${d.holdStatus||'active'}" onchange="updateDrugHoldStatus('${d.id}', this.value)">
+              <option value="active" ${(d.holdStatus||'active')==='active'?'selected':''}>✅ Đang dùng (100% liều)</option>
+              <option value="hold" ${d.holdStatus==='hold'?'selected':''}>⏸ Tạm ngưng chu kỳ này</option>
+              <option value="stop" ${d.holdStatus==='stop'?'selected':''}>🛑 Ngưng hẳn</option>
+            </select>
+          </div>
+        </div>
+      </div>`;
+    } else if (dtype === 'hormone') {
+      dmPanel = `<div class="dm-panel dm-hormone"><i class="ti ti-lock" style="flex-shrink:0; color:#92400E;"></i><span>${dtypeInfo.hormone}</span></div>`;
+    } else if (dtype === 'adc') {
+      dmPanel = `<div class="dm-panel dm-adc">
+        <i class="ti ti-info-circle" style="flex-shrink:0; color:#4C1D95;"></i>
+        <div style="flex:1;">
+          <span>${dtypeInfo.adc}</span>
+          <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--color-text-secondary);">Trạng thái:</span>
+            <select id="hold-sel-${d.id}" class="dm-status-select status-${d.holdStatus||'active'}" onchange="updateDrugHoldStatus('${d.id}', this.value)">
+              <option value="active" ${(d.holdStatus||'active')==='active'?'selected':''}>✅ Đang dùng</option>
+              <option value="hold" ${d.holdStatus==='hold'?'selected':''}>⏸ Tạm ngưng</option>
+              <option value="stop" ${d.holdStatus==='stop'?'selected':''}>🛑 Ngưng hẳn</option>
+            </select>
+          </div>
+        </div>
+      </div>`;
+    }
+
     const div=document.createElement('div');
     div.className='drug-block';div.id=d.id;
     div.innerHTML=`
@@ -1008,9 +1222,17 @@ function renderDrugs(){
         <input style="flex:1;min-width:130px;height:32px;padding:0 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:14px;font-weight:600"
           placeholder="Tên hoạt chất" value="${d.name}" oninput="updateDrug('${d.id}','name',this.value)">
         <span class="badge ${bcls[d.doseType]}">${bmap[d.doseType]}</span>
+        <span class="badge ${dtInfo.cls}"><i class="ti ${dtInfo.icon}"></i> ${dtInfo.label}</span>
         <span class="cycle-badge">${routeLabel(d.route)}</span>
         <button class="btn-danger no-print" onclick="removeDrug('${d.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
       </div>
+      <div style="margin-bottom:8px;" class="no-print">
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px;font-weight:600;">Phân loại liệu pháp <span style="font-weight:400; font-style:italic;">(ảnh hưởng quy tắc quản lý liều)</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${['chemo','targeted','immuno','hormone','adc'].map(t=>`<button class="dtb ${dtype===t?'active':''} badge ${dtypeMap[t].cls}" style="${dtype===t?'font-weight:700;':''}" onclick="updateDrugType('${d.id}','${t}')"><i class="ti ${dtypeMap[t].icon}"></i> ${dtypeMap[t].label}</button>`).join('')}
+        </div>
+      </div>
+      ${dmPanel}
       <div style="margin-bottom:10px">
         <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">Đường dùng</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1021,10 +1243,10 @@ function renderDrugs(){
         </div>
       </div>
       <div style="margin-bottom:10px">
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">Loại hình tính liều cơ sở</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">Loại hình tính liều cơ sở${isLocked?' <span style="color:#A32D2D; font-weight:600;">(Khóa giảm liều %)</span>':''}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="dtb ${d.doseType==='bsa'?'active':''}" onclick="setDoseType('${d.id}','bsa')">BSA (mg/m²)</button>
-          <button class="dtb ${d.doseType==='auc'?'active':''}" onclick="setDoseType('${d.id}','auc')">AUC – Calvert</button>
+          <button class="dtb ${d.doseType==='bsa'?'active':''}" onclick="setDoseType('${d.id}','bsa')" ${dtype==='hormone'?'disabled style="opacity:0.5;"':''}>BSA (mg/m²)</button>
+          <button class="dtb ${d.doseType==='auc'?'active':''}" onclick="setDoseType('${d.id}','auc')" ${dtype==='hormone'?'disabled style="opacity:0.5;"':''}>AUC – Calvert</button>
           <button class="dtb ${d.doseType==='flat'?'active':''}" onclick="setDoseType('${d.id}','flat')">Flat (Liều cố định)</button>
         </div>
       </div>
@@ -1094,28 +1316,61 @@ function generateSchedule(){
     d.days.forEach(day => { if(day > maxDay) maxDay = day; });
   });
   
+  const bsaVal=parseFloat(bsa)||0;
+  const egfrVal=parseFloat(egfr)||0;
+  const globalDosePctVal=parseFloat(document.getElementById('dose-reduction-pct').value)||100;
+
   let dayProfiles = [];
   for (let d = 1; d <= maxDay; d++) {
     let dayDrugs = [];
     drugs.forEach(drug => {
       drug = normalizeDrug(drug);
-      if (drug.days.includes(d)) {
-        let totalDoseText = document.getElementById('result-' + drug.id)?.innerText || '—';
-        let cleanDose = totalDoseText.split('\n')[0].trim(); 
-        const isOral = drug.route === 'oral';
-        if(isOral && drug.oralStrength > 0) {
-          const doseVal = parseFloat(cleanDose) || 0;
-          const tablets = doseVal > 0 ? (doseVal / drug.oralStrength) : 0;
-          if(tablets > 0) cleanDose += ` (${Number(tablets.toFixed(2))} viên × ${drug.oralStrength} mg)`;
-        }
-        const rate = !isOral && drug.volume > 0 && drug.infTime > 0 ? (drug.volume / drug.infTime * 60).toFixed(0) + ' mL/h' : '—';
-        const volumeText = isOral ? '—' : (drug.volume > 0 ? drug.volume + ' mL' : '—');
-        const timeText = isOral ? '—' : (drug.infTime >= 60 ? (drug.infTime / 60).toFixed(1) + 'h' : drug.infTime > 0 ? drug.infTime + ' ph' : '—');
-        
+      if (!drug.days.includes(d)) return;
+
+      // Skip held/stopped drugs entirely from schedule output
+      if (drug.holdStatus === 'hold' || drug.holdStatus === 'stop') {
+        const statusLabel = drug.holdStatus === 'hold' ? '⏸ TẠM NGƯNG' : '🛑 NGƯNG HẲN';
         dayDrugs.push({
-          name: drug.name, route: drug.route, routeText: routeLabel(drug.route), totalDose: cleanDose, diluent: drug.diluent, volume: drug.volume, volumeText: volumeText, rate: rate, infTime: drug.infTime, timeText: timeText, instruction: drug.instruction || '—'
+          name: drug.name,
+          nameCell: `${drug.name||'(Chưa nhập tên thuốc)'} <span style="color:#A32D2D; font-weight:bold;">[${statusLabel}]</span>`,
+          route: drug.route,
+          totalDose: statusLabel,
+          diluent: '—', volume: 0, volumeText: '—', rate: '—', infTime: 0, timeText: '—',
+          instruction: drug.instruction||'—'
         });
+        return;
       }
+
+      // Dose % by drugType
+      const effectiveDosePct = ['targeted','immuno','hormone','adc'].includes(drug.drugType) ? 100 : globalDosePctVal;
+      const calc=computeDrugDose(drug,{bsa:bsaVal,egfr:egfrVal,dosePct:effectiveDosePct});
+      const isOral=drug.route==='oral';
+      let nameCell=drug.name||'(Chưa nhập tên thuốc)';
+      let doseCell='—';
+      if(isOral && calc.tabletsPerDay>0) {
+        if(drug.oralStrength>0) nameCell+=` <span style="font-weight:normal; color:#4b5563; font-size:12px;">(${drug.oralStrength} mg/viên)</span>`;
+        doseCell=formatTabletSchedule(calc.tabletParts);
+      } else if(calc.finalMg>0) {
+        doseCell=`${calc.finalMg.toFixed(1)} mg`;
+      }
+        const rate=!isOral && drug.volume>0 && drug.infTime>0?(drug.volume/drug.infTime*60).toFixed(0)+' mL/h':'—';
+        const volumeText=isOral?'—':(drug.volume>0?drug.volume+' mL':'—');
+        const timeText=isOral?'—':(drug.infTime>=60?(drug.infTime/60).toFixed(1)+'h':drug.infTime>0?drug.infTime+' ph':'—');
+        const diluentText=isOral?'—':(drug.diluent||'—');
+
+        dayDrugs.push({
+          name: drug.name,
+          nameCell,
+          route: drug.route,
+          totalDose: doseCell,
+          diluent: diluentText,
+          volume: drug.volume,
+          volumeText,
+          rate,
+          infTime: drug.infTime,
+          timeText,
+          instruction: drug.instruction||'—'
+        });
     });
     if(dayDrugs.length > 0) dayProfiles[d] = dayDrugs;
   }
@@ -1127,8 +1382,8 @@ function generateSchedule(){
     if (!p1 || !p2) return false;
     if (p1.length !== p2.length) return false;
     for (let i = 0; i < p1.length; i++) {
-      if (p1[i].name !== p2[i].name || p1[i].totalDose !== p2[i].totalDose || 
-          p1[i].route !== p2[i].route ||
+      if (p1[i].name !== p2[i].name || p1[i].totalDose !== p2[i].totalDose ||
+          p1[i].nameCell !== p2[i].nameCell ||
           p1[i].diluent !== p2[i].diluent || p1[i].volume !== p2[i].volume || 
           p1[i].rate !== p2[i].rate || p1[i].infTime !== p2[i].infTime ||
           p1[i].instruction !== p2[i].instruction) {
@@ -1189,9 +1444,9 @@ function generateSchedule(){
     <thead>
       <tr>
         <th style="width:65px; text-align:center;">Ngày dùng</th>
-        <th style="width:160px;">Tên thuốc / Hoạt chất hóa chất</th>
-        <th style="width:115px;">Liều lượng y lệnh</th>
-        <th style="width:100px;">Đường dùng / Dung môi</th>
+        <th style="width:180px;">Tên thuốc / Hoạt chất hóa chất</th>
+        <th style="width:130px;">Liều lượng y lệnh</th>
+        <th style="width:95px;">Dung môi</th>
         <th style="width:65px; text-align:center;">Thể tích</th>
         <th>Cách dùng & Hướng dẫn y lệnh</th>
         <th style="width:80px; text-align:center;">Tốc độ</th>
@@ -1207,9 +1462,9 @@ function generateSchedule(){
       html += `
       <tr style="background:#fff; color:#000;">
         ${i === 0 ? `<td rowspan="${g.profile.length}" style="text-align:center; vertical-align:middle; font-weight:bold; background:#f9fafb;"><span class="tag-day">${dayText}</span></td>` : ''}
-        <td style="font-weight:600; padding:8px;">${d.name || '(Chưa nhập tên thuốc)'}</td>
+        <td style="font-weight:600; padding:8px;">${d.nameCell || d.name || '(Chưa nhập tên thuốc)'}</td>
         <td style="font-weight:bold; color:#0C447C; padding:8px; font-size:13px;">${d.totalDose}</td>
-        <td>${d.routeText}${d.route==='oral'?'':' · '+d.diluent}</td>
+        <td>${d.diluent}</td>
         <td style="text-align:center;">${d.volumeText}</td>
         <td style="font-size:12px; font-style:italic; padding:6px; color:#111;">${d.instruction}</td>
         <td style="text-align:center; font-family:var(--font-sans); font-weight:bold;">${d.rate}</td>
@@ -1305,32 +1560,30 @@ function saveRecord(){
   const doseReductionPct = parseFloat(doseReductionEl.value)||100;
 
   // Snapshot drug doses — deep copy to avoid reference issues
+  const bsaVal=parseFloat(bsa)||0;
+  const egfrVal=parseFloat(egfr)||0;
   const drugSnapshot = drugs.map(d => {
-    const resultEl = document.getElementById('result-' + d.id);
-    const doseText = resultEl ? resultEl.innerText.split('\n')[0].trim() : '—';
-    const doseVal = parseFloat(doseText) || 0;
-    const bsaVal = parseFloat(bsa)||0;
-    const egfrVal = parseFloat(egfr)||0;
-    let theoreticalDose = 0;
-    if(d.doseType==='bsa'&&bsaVal>0) theoreticalDose=d.dose*bsaVal;
-    else if(d.doseType==='auc'&&egfrVal>0) theoreticalDose=d.dose*(egfrVal+25);
-    else if(d.doseType==='flat') theoreticalDose=d.dose;
-
+    const calc=computeDrugDose(d,{bsa:bsaVal,egfr:egfrVal,dosePct:doseReductionPct});
+    const nd=normalizeDrug(d);
     return {
       name: d.name,
-      route: d.route || inferRoute(d),
-      plannedDose: theoreticalDose,
-      actualDose: doseVal,
+      route: nd.route,
+      plannedDose: calc.theoretical,
+      actualDose: calc.finalMg,
       doseType: d.doseType,
       baseDose: d.dose,
       unit: d.unit,
-      oralStrength: d.oralStrength || 0,
-      calculatedDose: doseVal,
+      oralStrength: nd.oralStrength || 0,
+      tabletsPerDay: calc.tabletsPerDay || 0,
+      tabletSchedule: formatTabletSchedule(calc.tabletParts),
+      calculatedDose: calc.finalMg,
       maxDose: d.maxDose,
-      volume: d.volume,
-      infTime: d.infTime,
+      volume: nd.route==='iv'||nd.route==='sc'||nd.route==='im'?nd.volume:0,
+      infVolumeMl: nd.route!=='oral'?nd.volume:0,
+      infTime: nd.infTime,
+      timesPerDay: calc.timesPerDay,
       days: Array.isArray(d.days) ? [...d.days] : [1],
-      diluent: d.diluent,
+      diluent: nd.diluent,
       instruction: d.instruction || ''
     };
   });
@@ -1713,16 +1966,30 @@ function renderHistory(){
             <thead><tr style="background:#f9fafb;">
               <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:left; color:var(--color-text-secondary);">Hoạt chất</th>
               <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; color:var(--color-text-secondary);">Liều tính</th>
+              <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:left; color:var(--color-text-secondary);">Dịch truyền / Dung môi</th>
               <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; color:var(--color-text-secondary);">Ngày dùng</th>
               <th style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; color:var(--color-text-secondary);">Tốc độ</th>
             </tr></thead>
             <tbody>
               ${r.drugSnapshot.map(ds => {
-                const rate = ds.volume > 0 && ds.infTime > 0 ? (ds.volume/ds.infTime*60).toFixed(0)+' mL/h' : '—';
+                const route = ds.route || inferRoute(ds);
+                const volMl = parseFloat(ds.infVolumeMl != null ? ds.infVolumeMl : ds.volume) || 0;
+                const rate = route !== 'oral' && volMl > 0 && ds.infTime > 0 ? (volMl/ds.infTime*60).toFixed(0)+' mL/h' : '—';
+                const infText = route === 'oral'
+                  ? (ds.tabletSchedule || (ds.tabletsPerDay > 0 ? ds.tabletsPerDay + ' viên/ngày' : 'Uống'))
+                  : (ds.diluent && ds.diluent !== 'Không áp dụng'
+                    ? ds.diluent + (volMl > 0 ? ' · ' + volMl + ' mL' : '')
+                    : '—');
                 const daysArr = Array.isArray(ds.days) ? ds.days : [1];
+                const doseText = route === 'oral' && ds.tabletSchedule
+                  ? ds.calculatedDose > 0
+                    ? ds.calculatedDose.toFixed(0) + ' mg · ' + ds.tabletSchedule
+                    : ds.tabletSchedule
+                  : (ds.calculatedDose > 0 ? ds.calculatedDose.toFixed(1) + ' mg' : '—');
                 return `<tr>
                   <td style="padding:4px 6px; border:0.5px solid #e5e7eb; font-weight:600;">${ds.name}</td>
-                  <td style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; font-weight:bold; color:#0C447C;">${ds.calculatedDose > 0 ? ds.calculatedDose.toFixed(1)+' mg' : '—'}</td>
+                  <td style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center; font-weight:bold; color:#0C447C;">${doseText}</td>
+                  <td style="padding:4px 6px; border:0.5px solid #e5e7eb; font-size:11px;">${infText}</td>
                   <td style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center;"><span class="tag-day">D${formatDays(daysArr)}</span></td>
                   <td style="padding:4px 6px; border:0.5px solid #e5e7eb; text-align:center;">${rate}</td>
                 </tr>`;
