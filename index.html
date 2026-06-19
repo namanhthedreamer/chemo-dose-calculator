@@ -253,6 +253,7 @@ body{background:var(--color-background-primary);color:var(--color-text-primary);
     <div class="metric-row">
       <div class="metric"><div class="lbl">BSA (Mosteller)</div><div class="val" id="bsa-val">—</div><div class="unit">m²</div></div>
       <div class="metric"><div class="lbl">eGFR (CKD-EPI 2021)</div><div class="val" id="crcl-val">—</div><div class="unit">mL/min/1.73m²</div></div>
+      <div class="metric"><div class="lbl">GFR dùng cho AUC (Calvert)</div><div class="val" id="gfr-val">—</div><div class="unit">mL/min</div></div>
       <div class="metric"><div class="lbl">BMI</div><div class="val" id="bmi-val">—</div><div class="unit">kg/m²</div></div>
     </div>
     <div class="warn" id="bsa-warning" style="display:none"><i class="ti ti-alert-triangle" aria-hidden="true"></i> BSA &gt; 2.0 m² — Cân nhắc giới hạn liều trần hoặc hiệu chỉnh liều theo thể trạng lâm sàng.</div>
@@ -622,7 +623,7 @@ function formatTabletSchedule(parts) {
 
 function computeDrugDose(d, opts) {
   const bsa = opts?.bsa ?? (parseFloat(document.getElementById('bsa-val')?.textContent) || 0);
-  const egfr = opts?.egfr ?? (parseFloat(document.getElementById('crcl-val')?.textContent) || 0);
+  const gfr = opts?.gfr ?? 0;
   const dosePct = opts?.dosePct ?? (parseFloat(document.getElementById('dose-reduction-pct')?.value) || 100);
   const minTabletPct = opts?.minTabletPct ?? 95;
 
@@ -633,8 +634,8 @@ function computeDrugDose(d, opts) {
   if (d.doseType === 'bsa' && bsa > 0) {
     theoretical = d.dose * bsa;
     if (d.route === 'oral' && timesPerDay > 1) theoretical *= timesPerDay;
-  } else if (d.doseType === 'auc' && egfr > 0) {
-    theoretical = d.dose * (egfr + 25);
+  } else if (d.doseType === 'auc' && gfr > 0) {
+  theoretical = d.dose * (gfr + 25);
   } else if (d.doseType === 'flat') {
     theoretical = d.dose;
     if (d.route === 'oral' && timesPerDay > 1 && !/ngày|daily/i.test(d.unit || '')) {
@@ -991,7 +992,14 @@ function calculateEGFR2021(scr_umol, age, sex) {
   if (sex === 'female') result *= 1.012;
   return result;
 }
+  
+function calculateAbsoluteGFR(egfr, bsa) {
+  if (!egfr || !bsa) return 0;
 
+  // Chuyển từ mL/min/1.73m² sang mL/min
+  return egfr * (bsa / 1.73);
+}
+  
 function moveDrugOrder(id, direction) {
   const idx = drugs.findIndex(d => d.id === id);
   if (idx === -1) return;
@@ -1028,6 +1036,7 @@ function calcDrug(id){
   const d=drugs.find(x=>x.id===id);if(!d)return;
   const bsa=parseFloat(document.getElementById('bsa-val').textContent)||0;
   const egfr=parseFloat(document.getElementById('crcl-val').textContent)||0;
+  const gfr = calculateAbsoluteGFR(egfr, bsa);
   const nd=normalizeDrug(d);
 
   // Dose % logic by drugType: targeted/immuno/hormone/adc always 100%
@@ -1040,7 +1049,7 @@ function calcDrug(id){
     dosePct = parseFloat(document.getElementById('dose-reduction-pct').value)||100;
   }
 
-  const calc=computeDrugDose(d,{bsa,egfr,dosePct});
+  const calc=computeDrugDose(d,{bsa,gfr,dosePct});
   let pctString='';
 
   if(nd.holdStatus === 'hold') {
@@ -1112,7 +1121,10 @@ function updateDrugType(id, dtype) {
   if (!d) return;
   d.drugType = dtype;
   renderDrugs();
-  recalc();
+  recalc(const gfr = calculateAbsoluteGFR(egfr, bsa);
+
+document.getElementById('gfr-val').textContent =
+  gfr > 0 ? Math.round(gfr) : '—';);
 }
 
 function setDoseType(id,type){
@@ -1343,7 +1355,7 @@ function generateSchedule(){
 
       // Dose % by drugType
       const effectiveDosePct = ['targeted','immuno','hormone','adc'].includes(drug.drugType) ? 100 : globalDosePctVal;
-      const calc=computeDrugDose(drug,{bsa:bsaVal,egfr:egfrVal,dosePct:effectiveDosePct});
+      const calc=computeDrugDose(drug,{bsa:bsaVal,gfr:gfrVal,dosePct:effectiveDosePct});
       const isOral=drug.route==='oral';
       let nameCell=drug.name||'(Chưa nhập tên thuốc)';
       let doseCell='—';
@@ -1563,7 +1575,8 @@ function saveRecord(){
   const bsaVal=parseFloat(bsa)||0;
   const egfrVal=parseFloat(egfr)||0;
   const drugSnapshot = drugs.map(d => {
-    const calc=computeDrugDose(d,{bsa:bsaVal,egfr:egfrVal,dosePct:doseReductionPct});
+    const gfrVal = calculateAbsoluteGFR(egfrVal,bsaVal);
+    const calc=computeDrugDose(d,{bsa:bsaVal,gfr:gfrVal,dosePct:doseReductionPct});
     const nd=normalizeDrug(d);
     return {
       name: d.name,
